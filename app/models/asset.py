@@ -26,4 +26,13 @@ class Asset(Base):
     owner_id = Column(Integer, ForeignKey("users.id"))
     
     # Relationships
-    owner = relationship("User", back_populates="assets") 
+    owner = relationship("User", back_populates="assets")
+    
+class AutoAsset(Base):
+    __tablename__ = "auto_assets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    asset_type = Column(String, index=True)
+    status = Column(String, index=True)
+    

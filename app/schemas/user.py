@@ -33,4 +33,4 @@ class UserInDB(UserInDBBase):
     hashed_password: str
 
 class UserWithRoles(User):
-    roles: List["Role"] = [] 
+    roles: List["Role"] = []
