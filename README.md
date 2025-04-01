@@ -206,6 +206,6 @@ cmdb/
 
 ## 联系方式
 
-- 项目维护者：[Your Name](https://github.com/yourusername)
-- 邮箱：[your.email@example.com](mailto:your.email@example.com)
-- 项目链接：[https://github.com/yourusername/python-cmdb](https://github.com/yourusername/python-cmdb)
+- 项目维护者：[himku](https://github.com/himku)
+- 邮箱：[baemawu@gmail.com](mailto:baemawu@gmail.com)
+- 项目链接：[https://github.com/himku/python-cmdb](https://github.com/himku/python-cmdb)
