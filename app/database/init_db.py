@@ -1,3 +1,4 @@
+import logging
 from sqlalchemy.orm import Session
 from app.database.session import Base, engine
 from app.core.logging import setup_logging
