@@ -23,4 +23,6 @@ class User(Base):
     
     # Relationships
     roles = relationship("Role", secondary=user_role, back_populates="users")
-    assets = relationship("Asset", back_populates="owner") 
+    assets = relationship("Asset", back_populates="owner")
+    # 添加一个反向关系，用于获取用户创建的资产
+    created_assets = relationship("Asset", back_populates="creator")
