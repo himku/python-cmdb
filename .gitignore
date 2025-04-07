@@ -17,3 +17,5 @@ wheels/
 *.pyz
 .python-version
 .env
+.env.*
+!.env.example
