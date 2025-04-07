@@ -734,7 +734,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "alembic", specifier = ">=1.15.2" },
-    { name = "bcrypt", specifier = ">=4.3.0" },
+    { name = "bcrypt", specifier = ">=4.0.1" },
     { name = "boto3", specifier = ">=1.37.28" },
     { name = "fastapi", extras = ["standard"], specifier = ">=0.115.12" },
     { name = "jose", specifier = ">=1.0.0" },

@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from app.core.config import get_settings
 from app.core.logging import setup_logging
 from app.database import init_db
+from app.api.v1.api import api_router
 import uuid
 from loguru import logger
 
@@ -12,11 +13,16 @@ logger = setup_logging()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("Initializing database...")
-    init_db()
-    logger.info("Database initialized successfully")
+    # Initialize database and create admin user
+    try:
+        logger.info(f"Starting database initialization {settings.MYSQL_HOST}")
+        init_db()
+        logger.info(f"Database initialization completed successfully {settings.MYSQL_HOST}")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+        raise
     yield
-    logger.info("Shutting down...")
+    logger.info(f"Shutting down {settings.MYSQL_HOST}")
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -34,6 +40,9 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+# Include API router
+app.include_router(api_router, prefix=settings.API_V1_STR)
 
 @app.middleware("http")
 async def add_request_id(request: Request, call_next):
