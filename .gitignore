@@ -16,3 +16,4 @@ wheels/
 *.pyw
 *.pyz
 .python-version
+.env
