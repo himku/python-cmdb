@@ -2,7 +2,6 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.core.config import get_settings
 from app.core.logging import setup_logging
-from app.api import auth, user, asset
 
 settings = get_settings()
 
@@ -25,10 +24,7 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# Include routers
-app.include_router(auth.router, prefix=settings.API_V1_STR + "/auth", tags=["auth"])
-app.include_router(user.router, prefix=settings.API_V1_STR + "/users", tags=["users"])
-app.include_router(asset.router, prefix=settings.API_V1_STR + "/assets", tags=["assets"])
+
 
 @app.get("/")
 async def root():

@@ -10,7 +10,6 @@ from app.core.security import verify_token
 from app.database.session import SessionLocal
 from app.models.user import User
 from app.schemas.auth import TokenPayload
-from app.crud.user import get_user_by_id
 
 settings = get_settings()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
@@ -38,12 +37,6 @@ async def get_current_user(
         token_data = TokenPayload(**payload)
     except (jwt.JWTError, ValidationError):
         raise credentials_exception
-    
-    user = get_user_by_id(db, user_id=token_data.sub)
-    if not user:
-        raise credentials_exception
-    return user
-
 async def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:

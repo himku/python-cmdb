@@ -3,11 +3,16 @@ name = "python-cmdb"
 version = "0.1.0"
 description = "FastAPI based CMDB"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.9"
 dependencies = [
     "alembic>=1.15.2",
+    "boto3>=1.37.28",
     "fastapi[standard]>=0.115.12",
+    "jose>=1.0.0",
+    "passlib>=1.7.4",
     "pydantic>=2.11.1",
+    "pydantic-settings>=2.8.1",
+    "python-jose>=3.4.0",
     "sqlalchemy>=2.0.40",
     "uvicorn>=0.34.0",
 ]
