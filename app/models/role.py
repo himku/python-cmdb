@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Table
+from sqlalchemy import Column, Integer, String, Table, ForeignKey, Boolean
 from sqlalchemy.orm import relationship
 from app.database.session import Base
 
@@ -14,19 +14,10 @@ class Role(Base):
     __tablename__ = "roles"
 
     id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    description = Column(String)
+    name = Column(String(50), unique=True, index=True, nullable=False)
+    description = Column(String(255), nullable=True)
+    is_active = Column(Boolean, default=True)
     
     # Relationships
     users = relationship("User", secondary="user_role", back_populates="roles")
-    permissions = relationship("Permission", secondary=role_permission, back_populates="roles")
-
-class Permission(Base):
-    __tablename__ = "permissions"
-
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String, unique=True, index=True)
-    description = Column(String)
-    
-    # Relationships
-    roles = relationship("Role", secondary=role_permission, back_populates="permissions") 
+    permissions = relationship("Permission", secondary=role_permission, back_populates="roles") 

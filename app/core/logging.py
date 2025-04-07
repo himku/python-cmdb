@@ -1,23 +1,17 @@
-import logging
 import sys
-from pathlib import Path
-from logging.handlers import RotatingFileHandler
+import uuid
+from loguru import logger
 
-def setup_logging() -> None:
+def setup_logging():
+    # Remove default handler
+    logger.remove()
     
-    formatter = logging.Formatter(
-        '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    # Add console handler with UUID
+    logger.add(
+        sys.stdout,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss.SSS}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> | <level>{message}</level>",
+        level="INFO",
+        enqueue=True
     )
     
-    # Console handler
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setFormatter(formatter)
-    
-    # Root logger configuration
-    root_logger = logging.getLogger()
-    root_logger.setLevel(logging.INFO)
-    root_logger.addHandler(console_handler)
-    
-    # Set specific loggers
-    logging.getLogger("uvicorn").setLevel(logging.INFO)
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.WARNING) 
+    return logger 
