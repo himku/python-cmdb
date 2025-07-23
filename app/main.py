@@ -32,9 +32,9 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     terms_of_service="https://github.com/himku/python-cmdb",
     contact={
-        "name": "xxx",
+        "name": "admin",
         "url": "https://github.com/himku/python-cmdb",
-        "email": "xxx",
+        "email": "admin@qq.com",
     },
     license_info={
         "name": "MIT",
