@@ -26,8 +26,20 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
+    description="一个基于 FastAPI 的现代化配置管理数据库系统，支持资产管理、用户认证、权限控制等功能。\n\n"
+                "访问 [Swagger UI](/docs) 或 [ReDoc](/redoc) 查看完整 API 文档。",
     version=settings.VERSION,
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
+    terms_of_service="https://github.com/himku/python-cmdb",
+    contact={
+        "name": "xxx",
+        "url": "https://github.com/himku/python-cmdb",
+        "email": "xxx",
+    },
+    license_info={
+        "name": "MIT",
+        "url": "https://opensource.org/licenses/MIT",
+    },
     lifespan=lifespan
 )
 
@@ -57,3 +69,10 @@ async def root():
     return {"message": "Welcome to CMDB API"}
 
 
+@app.get("/health")
+async def health_check():
+    """
+    Health check endpoint to verify API status.
+    Returns a simple JSON response indicating the service is running.
+    """
+    return {"status": "ok", "message": "CMDB API is running smoothly."}

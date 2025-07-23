@@ -18,6 +18,7 @@ def drop_db() -> None:
         raise
 
 def init_db() -> None:
+    db = None
     try:
         # Drop existing tables
         drop_db()
@@ -87,4 +88,5 @@ def init_db() -> None:
         logger.error(f"Error initializing database: {e}")
         raise
     finally:
-        db.close() 
+        if db is not None:
+            db.close()
