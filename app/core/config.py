@@ -1,39 +1,45 @@
-# Import required modules
+# 导入所需模块
 from pydantic_settings import BaseSettings
 from typing import Optional
 from functools import lru_cache
 
-
-## Configurations for the application
+## 应用程序配置
 class Settings(BaseSettings):
-    # Basic application settings
-    PROJECT_NAME: str = "CMDB"  # Name of the project
-    VERSION: str = "1.0.0"      # Current version
-    API_V1_STR: str = "/api/v1" # API version prefix
+    # 基本应用设置
+    PROJECT_NAME: str = "CMDB"  # 项目名称
+    VERSION: str = "1.0.0"      # 当前版本
+    API_V1_STR: str = "/api/v1" # API 版本前缀
     
-    # Database connection settings
-    MYSQL_HOST: str             # MySQL server hostname
-    MYSQL_USER: str             # MySQL username
-    MYSQL_PASSWORD: str         # MySQL password
-    MYSQL_DB: str              # MySQL database name
-    SQLALCHEMY_DATABASE_URI: Optional[str] = None  # Full database connection string
+    # 数据库连接设置
+    MYSQL_HOST: str             # MySQL 服务器主机名
+    MYSQL_USER: str             # MySQL 用户名
+    MYSQL_PASSWORD: str         # MySQL 密码
+    MYSQL_DB: str               # MySQL 数据库名
+    SQLALCHEMY_DATABASE_URI: Optional[str] = None  # 完整数据库连接字符串
     
-    # JWT authentication settings
-    SECRET_KEY: str            # Secret key for JWT token signing
-    ALGORITHM: str = "HS256"   # Algorithm used for JWT token
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Token expiration time in minutes
+    # Redis 连接设置
+    REDIS_HOST: str = "localhost"    # Redis 服务器主机名
+    REDIS_PORT: int = 6379           # Redis 服务器端口
+    REDIS_PASSWORD: Optional[str] = None  # Redis 密码（可选）
+    REDIS_DB: int = 0                # Redis 数据库编号
+    REDIS_URL: Optional[str] = None  # 完整 Redis 连接字符串
     
-    # CORS configuration
-    BACKEND_CORS_ORIGINS: list[str] = ["*"]  # List of allowed origins, "*" allows all
+    # JWT 认证设置
+    SECRET_KEY: str                  # JWT 签名密钥
+    ALGORITHM: str = "HS256"         # JWT 使用的算法
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Token 过期时间（分钟）
+    
+    # CORS 配置
+    BACKEND_CORS_ORIGINS: list[str] = ["*"]  # 允许的来源列表，"*" 表示全部允许
     
     class Config:
-        case_sensitive = True   # Make settings case sensitive
-        env_file = ".env"      # Load settings from .env file
+        case_sensitive = True   # 设置区分大小写
+        env_file = ".env"      # 从 .env 文件加载配置
 
     def __init__(self, **kwargs):
         """
-        Initialize Settings with environment variables.
-        Constructs database URI if not explicitly provided.
+        使用环境变量初始化 Settings。
+        如果未显式提供，则自动构建数据库 URI 和 Redis URL。
         """
         super().__init__(**kwargs)
         if not self.SQLALCHEMY_DATABASE_URI:
@@ -41,11 +47,22 @@ class Settings(BaseSettings):
                 f"mysql+pymysql://{self.MYSQL_USER}:{self.MYSQL_PASSWORD}"
                 f"@{self.MYSQL_HOST}/{self.MYSQL_DB}"
             )
+        
+        if not self.REDIS_URL:
+            if self.REDIS_PASSWORD:
+                self.REDIS_URL = (
+                    f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:"
+                    f"{self.REDIS_PORT}/{self.REDIS_DB}"
+                )
+            else:
+                self.REDIS_URL = (
+                    f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
+                )
 
 @lru_cache()
 def get_settings() -> Settings:
     """
-    Create and return a cached instance of Settings.
-    Uses lru_cache to prevent reading environment variables multiple times.
+    创建并返回 Settings 的缓存实例。
+    使用 lru_cache 防止多次读取环境变量。
     """
-    return Settings() 
+    return Settings()

@@ -14,7 +14,8 @@
   - 资产关系管理
 - 🚀 现代化技术栈
   - FastAPI 框架
-  - PostgreSQL 数据库
+  - MySQL 数据库
+  - Redis 缓存
   - SQLAlchemy ORM
   - Pydantic 数据验证
 - 📚 API 文档
@@ -26,9 +27,10 @@
 
 ## 技术栈
 
-- Python 3.13+
+- Python 3.9+
 - FastAPI
-- PostgreSQL
+- MySQL
+- Redis
 - SQLAlchemy
 - Alembic
 - Pydantic
@@ -39,8 +41,9 @@
 
 ### 环境要求
 
-- Python 3.13 或更高版本
-- PostgreSQL 数据库
+- Python 3.9 或更高版本
+- MySQL 数据库
+- Redis 服务器
 - Docker (可选)
 
 ### 安装步骤
@@ -48,36 +51,43 @@
 1. 克隆仓库：
 
 ```bash
-git clone https://github.com/yourusername/python-cmdb.git
+git clone https://github.com/himku/python-cmdb.git
 cd python-cmdb
 ```
 
-2. 创建并激活虚拟环境：
+2. 安装依赖（使用 uv 包管理器）：
 
 ```bash
-python -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
+# 安装 uv（如果还没有安装）
+pip install uv
+
+# 安装项目依赖
+uv sync
 ```
 
-3. 安装依赖：
-
-```bash
-pip install -r requirements.txt
-```
-
-4. 配置环境变量：
+3. 配置环境变量：
 
 ```bash
 cp .env.example .env
-# 编辑 .env 文件，设置必要的环境变量
+# 编辑 .env 文件，设置必要的环境变量：
+# - MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB
+# - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB
+# - SECRET_KEY
+```
+
+4. 准备数据库和 Redis：
+
+```bash
+# 创建 MySQL 数据库
+mysql -u root -p -e "CREATE DATABASE cmdb CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+
+# 确保 Redis 服务正在运行
+redis-server
 ```
 
 5. 初始化数据库：
 
 ```bash
-# 创建数据库
-createdb cmdb
-
 # 运行数据库迁移
 alembic upgrade head
 ```
@@ -140,7 +150,8 @@ cmdb/
 │   │   ├── user.py              # 用户 CRUD
 │   │   └── role.py              # 角色 CRUD
 │   ├── database/                 # 数据库配置
-│   │   ├── session.py           # 会话管理
+│   │   ├── session.py           # 数据库会话管理
+│   │   ├── redis.py             # Redis 连接管理
 │   │   └── init_db.py           # 数据库初始化
 │   ├── services/                 # 业务逻辑
 │   │   ├── asset_service.py     # 资产服务
