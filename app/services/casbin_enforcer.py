@@ -47,3 +47,10 @@ def get_policies():
     """
     enforcer = get_enforcer()
     return enforcer.get_policy()
+
+def get_user_policies(username: str):
+    """
+    获取指定用户的所有权限策略
+    """
+    enforcer = get_enforcer()
+    return enforcer.get_permissions_for_user(username)

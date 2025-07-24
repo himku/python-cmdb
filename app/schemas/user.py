@@ -2,6 +2,8 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
+from app.schemas.role import Role  # Add this import if Role is defined in app/schemas/role.py
+
 class UserBase(BaseModel):
     email: EmailStr
     username: str
@@ -33,5 +35,10 @@ class User(UserInDBBase):
 class UserInDB(UserInDBBase):
     hashed_password: str
 
+    class Config:
+        from_attributes = True
+        
+class UserWithRoles(User):
+    roles: List[Role] = []
 class UserWithRoles(User):
     roles: List["Role"] = []

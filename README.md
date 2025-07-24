@@ -46,7 +46,7 @@
 - Redis 服务器
 - Docker (可选)
 
-### 安装步骤
+### 安装与初始化
 
 1. 克隆仓库：
 
@@ -55,7 +55,7 @@ git clone https://github.com/himku/python-cmdb.git
 cd python-cmdb
 ```
 
-2. 安装依赖（使用 uv 包管理器）：
+2. 安装依赖（推荐用 uv，或用 pip）：
 
 ```bash
 # 安装 uv（如果还没有安装）
@@ -63,6 +63,8 @@ pip install uv
 
 # 安装项目依赖
 uv sync
+# 或用 pip
+pip install -r requirements.txt
 ```
 
 3. 配置环境变量：
@@ -85,12 +87,45 @@ mysql -u root -p -e "CREATE DATABASE cmdb CHARACTER SET utf8mb4 COLLATE utf8mb4_
 redis-server
 ```
 
-5. 初始化数据库：
+5. 初始化数据库结构（Alembic 迁移）：
 
 ```bash
 # 运行数据库迁移
 alembic upgrade head
 ```
+
+6. 初始化 Casbin 权限模型和 admin 权限（MySQL）：
+
+```bash
+# 创建 casbin_model 表并插入模型内容
+mysql -u root -p cmdb < casbin_model_init.sql
+
+# 初始化 admin 拥有所有权限
+mysql -u root -p cmdb < scripts/init_admin_casbin_policy.sql
+```
+
+### Casbin 权限系统使用说明
+
+- 权限模型（model.conf）和策略（policy）均持久化在数据库中。
+- admin 用户拥有所有资源、所有操作的权限（通配符 *）。
+- 可通过接口校验权限，例如：
+
+```python
+from app.services.casbin_enforcer import check_permission
+
+# 检查 admin 是否有 asset 的 write 权限
+allowed = check_permission("admin", "asset", "write")
+```
+
+- 查询用户权限（仅 admin 可用）：
+
+```
+GET /api/v1/casbin/policies?username=admin
+Header: Authorization: Bearer <token>
+```
+
+- 其他 Casbin 相关接口和用法详见 Swagger UI 文档（/docs）。
+
 
 ### 运行应用
 
