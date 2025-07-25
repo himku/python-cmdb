@@ -11,6 +11,10 @@ class UserManager(BaseUserManager[User, str]):
     reset_password_token_secret = SECRET
     verification_token_secret = SECRET
 
+    @staticmethod
+    def parse_id(user_id: str) -> str:
+        return user_id
+
     async def on_after_register(self, user: User, request=None):
         pass
 

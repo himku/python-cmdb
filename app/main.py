@@ -13,7 +13,7 @@ def get_jwt_strategy() -> JWTStrategy:
     return JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=3600)
 
 cookie_transport = CookieTransport(cookie_name="cmdb_auth", cookie_max_age=3600)
-bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
+bearer_transport = BearerTransport(tokenUrl="auth/login")
 
 auth_backend_cookie = AuthenticationBackend(
     name="jwt_cookie",
@@ -31,12 +31,14 @@ fastapi_users = FastAPIUsers[User, str](
     [auth_backend_cookie, auth_backend_bearer],
 )
 
+from app.api.v1.api import api_router
+
 app = FastAPI()
 
 # 注册 BearerTransport 路由，返回 200+JSON
 app.include_router(
     fastapi_users.get_auth_router(auth_backend_bearer),
-    prefix="/auth/jwt",
+    prefix="/auth",
     tags=["auth"],
 )
 # 保留 CookieTransport 路由（如需前端 cookie 认证）
@@ -45,16 +47,9 @@ app.include_router(
     prefix="/auth/jwt-cookie",
     tags=["auth"],
 )
-app.include_router(
-    fastapi_users.get_register_router(UserCreate, User),
-    prefix="/auth",
-    tags=["auth"],
-)
-app.include_router(
-    fastapi_users.get_users_router(User, UserUpdate),
-    prefix="/users",
-    tags=["users"],
-)
+
+# 注册自定义 /users 路由（带权限控制）
+app.include_router(api_router, prefix="/api/v1")
 
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(

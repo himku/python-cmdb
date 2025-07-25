@@ -1,4 +1,5 @@
 import uuid
+import sqlalchemy as sa
 from sqlalchemy import String, Boolean, Column, Table, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database.session import Base
@@ -29,6 +30,8 @@ class User(Base):
     is_active = Column(Boolean, default=True)
     is_superuser = Column(Boolean, default=False)
     is_verified = Column(Boolean, default=False, nullable=False)
+    created_at = Column(sa.DateTime, nullable=False, server_default=sa.func.now())
+    updated_at = Column(sa.DateTime, nullable=False, server_default=sa.func.now(), onupdate=sa.func.now())
     # 用户与角色多对多
     roles = relationship("Role", secondary=user_role, back_populates="users")
 

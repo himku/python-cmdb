@@ -7,7 +7,7 @@ INSERT INTO users (
     'admin@example.com',
     'admin',
     '超级管理员',
-    '$2b$12$eIX8n6Q1FQJ8Q1FQJ8Q1F.Q1FQJ8Q1FQJ8Q1FQJ8Q1FQJ8Q1FQJ8Q1', -- 示例 bcrypt hash
+    '$2b$12$AjRC39wPbZh2XOZVKJ.5OujGeVNtgtAG7MBTowjJITnUuPENXqkb6',
     1,
     1,
     1,

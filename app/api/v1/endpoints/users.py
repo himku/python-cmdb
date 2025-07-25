@@ -106,4 +106,4 @@ def delete_user(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found"
         )
-    return {"message": "User deleted successfully"} 
+    return {"message": "User deleted successfully"}
