@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 from app.core.config import get_settings
 from app.core.security import verify_token
 from app.database.session import SessionLocal
-from app.models.user import User
+from app.users.models import User
 from app.schemas.auth import TokenPayload
 
 settings = get_settings()
@@ -37,9 +37,20 @@ async def get_current_user(
         token_data = TokenPayload(**payload)
     except (jwt.JWTError, ValidationError):
         raise credentials_exception
+
+    # 兼容 sub 可能为用户id或用户名
+    user = None
+    if hasattr(token_data, "sub") and token_data.sub:
+        # 优先按 id 查找
+        user = db.query(User).filter(
+            (User.id == token_data.sub) | (User.username == token_data.sub) | (User.email == token_data.sub)
+        ).first()
+    if not user:
+        raise credentials_exception
+    return user
 async def get_current_active_user(
     current_user: User = Depends(get_current_user),
 ) -> User:
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
-    return current_user 
+    return current_user

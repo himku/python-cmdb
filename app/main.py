@@ -1,49 +1,61 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from contextlib import asynccontextmanager
+from app.users.models import User
+from app.users.manager import get_user_manager
+from fastapi_users import FastAPIUsers
+from fastapi_users.authentication import JWTStrategy, CookieTransport, BearerTransport, AuthenticationBackend
 from app.core.config import get_settings
-from app.core.logging import setup_logging
-from app.database import init_db
-from app.api.v1.api import api_router
-import uuid
-from loguru import logger
+from app.schemas.user import UserCreate, User, UserUpdate
 
 settings = get_settings()
-logger = setup_logging()
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Initialize database and create admin user
-    try:
-        logger.info(f"Starting database initialization {settings.MYSQL_HOST}")
-        init_db()
-        logger.info(f"Database initialization completed successfully {settings.MYSQL_HOST}")
-    except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
-        raise
-    yield
-    logger.info(f"Shutting down {settings.MYSQL_HOST}")
+def get_jwt_strategy() -> JWTStrategy:
+    return JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=3600)
 
-app = FastAPI(
-    title=settings.PROJECT_NAME,
-    description="一个基于 FastAPI 的现代化配置管理数据库系统，支持资产管理、用户认证、权限控制等功能。\n\n"
-                "访问 [Swagger UI](/docs) 或 [ReDoc](/redoc) 查看完整 API 文档。",
-    version=settings.VERSION,
-    openapi_url=f"{settings.API_V1_STR}/openapi.json",
-    terms_of_service="https://github.com/himku/python-cmdb",
-    contact={
-        "name": "admin",
-        "url": "https://github.com/himku/python-cmdb",
-        "email": "admin@qq.com",
-    },
-    license_info={
-        "name": "MIT",
-        "url": "https://opensource.org/licenses/MIT",
-    },
-    lifespan=lifespan
+cookie_transport = CookieTransport(cookie_name="cmdb_auth", cookie_max_age=3600)
+bearer_transport = BearerTransport(tokenUrl="auth/jwt/login")
+
+auth_backend_cookie = AuthenticationBackend(
+    name="jwt_cookie",
+    transport=cookie_transport,
+    get_strategy=get_jwt_strategy,
+)
+auth_backend_bearer = AuthenticationBackend(
+    name="jwt_bearer",
+    transport=bearer_transport,
+    get_strategy=get_jwt_strategy,
 )
 
-# Set up CORS middleware
+fastapi_users = FastAPIUsers[User, str](
+    get_user_manager,
+    [auth_backend_cookie, auth_backend_bearer],
+)
+
+app = FastAPI()
+
+# 注册 BearerTransport 路由，返回 200+JSON
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend_bearer),
+    prefix="/auth/jwt",
+    tags=["auth"],
+)
+# 保留 CookieTransport 路由（如需前端 cookie 认证）
+app.include_router(
+    fastapi_users.get_auth_router(auth_backend_cookie),
+    prefix="/auth/jwt-cookie",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_register_router(UserCreate, User),
+    prefix="/auth",
+    tags=["auth"],
+)
+app.include_router(
+    fastapi_users.get_users_router(User, UserUpdate),
+    prefix="/users",
+    tags=["users"],
+)
+
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
@@ -53,26 +65,6 @@ if settings.BACKEND_CORS_ORIGINS:
         allow_headers=["*"],
     )
 
-# Include API router
-app.include_router(api_router, prefix=settings.API_V1_STR)
-
-@app.middleware("http")
-async def add_request_id(request: Request, call_next):
-    request_id = str(uuid.uuid4())
-    with logger.contextualize(uuid=request_id):
-        response = await call_next(request)
-    return response
-
-@app.get("/")
-async def root():
-    logger.info("Welcome to CMDB API")
-    return {"message": "Welcome to CMDB API"}
-
-
 @app.get("/health")
 async def health_check():
-    """
-    Health check endpoint to verify API status.
-    Returns a simple JSON response indicating the service is running.
-    """
     return {"status": "ok", "message": "CMDB API is running smoothly."}

@@ -1,9 +1,6 @@
 import logging
-from sqlalchemy.orm import Session
 from app.database.session import Base, engine, SessionLocal
-from app.models.user import User
-from app.models.role import Role
-from app.models.permission import Permission
+# from app.users.models import User  # 移到函数内部，避免循环 import
 from app.core.security import get_password_hash
 from loguru import logger
 
@@ -18,6 +15,7 @@ def drop_db() -> None:
         raise
 
 def init_db() -> None:
+    from app.users.models import User, Role, Permission
     db = None
     try:
         # Drop existing tables

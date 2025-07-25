@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from app.models.user import User
+from app.users.models import User
 from app.schemas.user import UserCreate, UserUpdate
 from app.core.security import get_password_hash
 from typing import List, Optional
@@ -54,4 +54,4 @@ class UserService:
         
         self.db.delete(db_user)
         self.db.commit()
-        return True 
+        return True
