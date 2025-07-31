@@ -5,7 +5,7 @@ from app.users.manager import get_user_manager
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import JWTStrategy, CookieTransport, BearerTransport, AuthenticationBackend
 from app.core.config import get_settings
-from app.schemas.user import UserCreate, User, UserUpdate
+from app.schemas.user import User
 
 settings = get_settings()
 
