@@ -6,7 +6,7 @@ class PermissionBase(BaseModel):
     description: Optional[str] = None
 
 class PermissionCreate(PermissionBase):
-    pass
+    code: str
 
 class Permission(PermissionBase):
     id: int
