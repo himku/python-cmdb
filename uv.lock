@@ -669,6 +669,9 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+argon2 = [
+    { name = "argon2-cffi" },
+]
 bcrypt = [
     { name = "bcrypt" },
 ]
@@ -822,7 +825,7 @@ dependencies = [
     { name = "fastapi-users", extra = ["sqlalchemy"] },
     { name = "fastapi-users-db-sqlalchemy" },
     { name = "loguru" },
-    { name = "passlib", extra = ["bcrypt"] },
+    { name = "passlib", extra = ["argon2", "bcrypt"] },
     { name = "pydantic" },
     { name = "pymysql" },
     { name = "python-jose", extra = ["cryptography"] },
@@ -843,7 +846,7 @@ requires-dist = [
     { name = "fastapi-users", extras = ["sqlalchemy"] },
     { name = "fastapi-users-db-sqlalchemy" },
     { name = "loguru" },
-    { name = "passlib", extras = ["bcrypt"] },
+    { name = "passlib", extras = ["argon2", "bcrypt"] },
     { name = "pydantic", specifier = "==2.5.3" },
     { name = "pymysql" },
     { name = "python-jose", extras = ["cryptography"] },

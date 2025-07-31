@@ -18,7 +18,7 @@ dependencies = [
     "fastapi-users[sqlalchemy]",
     "fastapi-users-db-sqlalchemy",
     "python-jose[cryptography]",
-    "passlib[bcrypt]",
+    "passlib[argon2,bcrypt]",
     "python-multipart",
     "setuptools",
     "aiomysql"

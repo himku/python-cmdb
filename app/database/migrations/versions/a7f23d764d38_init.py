@@ -57,15 +57,8 @@ def upgrade():
         sa.Column('role_id', VARCHAR(36), sa.ForeignKey('roles.id')),
         sa.Column('permission_id', VARCHAR(36), sa.ForeignKey('permissions.id')),
     )
-    # Casbin模型表
-    op.create_table(
-        'casbin_model',
-        sa.Column('id', sa.Integer, primary_key=True, autoincrement=True),
-        sa.Column('content', sa.Text, nullable=False, comment='Casbin模型内容')
-    )
 
 def downgrade():
-    op.execute("DROP TABLE IF EXISTS casbin_model")
     op.execute("DROP TABLE IF EXISTS role_permission")
     op.execute("DROP TABLE IF EXISTS user_role")
     op.execute("DROP TABLE IF EXISTS permissions")

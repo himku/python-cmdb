@@ -3,13 +3,14 @@ from fastapi_users.manager import BaseUserManager
 from fastapi_users_db_sqlalchemy import SQLAlchemyUserDatabase
 from app.users.models import User
 from app.database.session import SessionLocal
+from app.core.config import get_settings
 from typing import AsyncGenerator
 
-SECRET = "CHANGE_ME"  # 可用 settings.SECRET_KEY
+settings = get_settings()
 
 class UserManager(BaseUserManager[User, str]):
-    reset_password_token_secret = SECRET
-    verification_token_secret = SECRET
+    reset_password_token_secret = settings.SECRET_KEY
+    verification_token_secret = settings.SECRET_KEY
 
     @staticmethod
     def parse_id(user_id: str) -> str:

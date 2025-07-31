@@ -10,7 +10,7 @@ from app.schemas.user import UserCreate, User, UserUpdate
 settings = get_settings()
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=3600)
+    return JWTStrategy(secret=settings.SECRET_KEY)
 
 cookie_transport = CookieTransport(cookie_name="cmdb_auth", cookie_max_age=3600)
 bearer_transport = BearerTransport(tokenUrl="auth/login")
@@ -63,3 +63,5 @@ if settings.BACKEND_CORS_ORIGINS:
 @app.get("/health")
 async def health_check():
     return {"status": "ok", "message": "CMDB API is running smoothly."}
+
+

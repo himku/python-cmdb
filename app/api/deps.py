@@ -1,9 +1,9 @@
-from typing import Generator, Optional
+from typing import AsyncGenerator, Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import jwt
 from pydantic import ValidationError
-from sqlalchemy.orm import Session
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.security import verify_token
@@ -12,17 +12,15 @@ from app.users.models import User
 from app.schemas.auth import TokenPayload
 
 settings = get_settings()
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl=f"{settings.API_V1_STR}/auth/login")
+# 修正tokenUrl为正确的登录端点
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-def get_db() -> Generator:
-    try:
-        db = SessionLocal()
-        yield db
-    finally:
-        db.close()
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with SessionLocal() as session:
+        yield session
 
 async def get_current_user(
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_db),
     token: str = Depends(oauth2_scheme)
 ) -> User:
     credentials_exception = HTTPException(
@@ -38,13 +36,23 @@ async def get_current_user(
     except (jwt.JWTError, ValidationError):
         raise credentials_exception
 
-    # 兼容 sub 可能为用户id或用户名
+    # 根据sub字段查找用户
     user = None
     if hasattr(token_data, "sub") and token_data.sub:
-        # 优先按 id 查找
-        user = db.query(User).filter(
-            (User.id == token_data.sub) | (User.username == token_data.sub) | (User.email == token_data.sub)
-        ).first()
+        from sqlalchemy import select
+        # 按用户ID查找
+        stmt = select(User).filter(User.id == token_data.sub)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+        
+        # 如果按ID没找到，尝试按用户名或邮箱查找
+        if not user:
+            stmt = select(User).filter(
+                (User.username == token_data.sub) | (User.email == token_data.sub)
+            )
+            result = await db.execute(stmt)
+            user = result.scalar_one_or_none()
+    
     if not user:
         raise credentials_exception
     return user
