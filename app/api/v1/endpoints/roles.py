@@ -1,19 +1,33 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 from typing import List
 from app.api.deps import get_db, get_current_active_user
 from app.services.role import RoleService
 from app.services.permission import PermissionService
 from app.schemas.role import Role, RoleCreate, RoleUpdate, Permission, PermissionCreate
 from app.schemas.user import User
+from app.users.models import User as UserModel, Role as RoleModel, user_role
 
 router = APIRouter()
 
-async def require_admin_role(current_user: User = Depends(get_current_active_user)) -> User:
+async def check_admin_permission(user_id: int, db: AsyncSession) -> bool:
+    """检查用户是否有admin权限"""
+    # 异步查询用户角色
+    stmt = select(RoleModel.name).join(user_role).filter(user_role.c.user_id == user_id)
+    result = await db.execute(stmt)
+    user_roles = result.scalars().all()
+    
+    # 检查用户是否有admin角色
+    return any(role.lower() == 'admin' for role in user_roles)
+
+async def require_admin_role(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> User:
     """确保当前用户具有admin角色"""
     if not current_user.is_superuser:
-        # 检查用户是否有admin角色
-        has_admin_role = any(role.name.lower() == 'admin' for role in current_user.roles)
+        has_admin_role = await check_admin_permission(current_user.id, db)
         if not has_admin_role:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,

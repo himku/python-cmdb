@@ -4,7 +4,8 @@ from typing import List
 import json
 
 from app.api.deps import get_db, get_current_active_user
-from app.api.v1.endpoints.roles import require_admin_role  # 重用admin权限检查
+from app.api.v1.endpoints.roles import check_admin_permission  # 重用admin权限检查
+from app.users.models import User as UserModel, Role as RoleModel, user_role
 from app.services.menu import MenuService
 from app.schemas.menu import (
     Menu, MenuCreate, MenuUpdate, MenuTree, 
@@ -14,6 +15,21 @@ from app.schemas.user import User
 
 router = APIRouter()
 
+# 本地admin权限检查函数
+async def require_admin_role_for_menu(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db)
+) -> User:
+    """菜单管理专用的admin权限检查"""
+    if not current_user.is_superuser:
+        has_admin_role = await check_admin_permission(current_user.id, db)
+        if not has_admin_role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="只有admin角色可以执行此操作"
+            )
+    return current_user
+
 # ==================== 管理员菜单管理 API ====================
 
 @router.get("/admin/menus", response_model=List[Menu])
@@ -21,7 +37,7 @@ async def list_menus(
     skip: int = 0,
     limit: int = 1000,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(require_admin_role_for_menu)
 ):
     """获取所有菜单列表 - 仅admin"""
     menu_service = MenuService(db)
@@ -67,7 +83,7 @@ async def list_menus(
 async def get_menu_tree(
     include_disabled: bool = False,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(require_admin_role_for_menu)
 ):
     """获取菜单树形结构 - 仅admin"""
     menu_service = MenuService(db)
@@ -77,7 +93,7 @@ async def get_menu_tree(
 async def create_menu(
     menu: MenuCreate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(require_admin_role_for_menu)
 ):
     """创建菜单 - 仅admin"""
     menu_service = MenuService(db)
@@ -112,7 +128,7 @@ async def create_menu(
 async def get_menu(
     menu_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(require_admin_role_for_menu)
 ):
     """获取菜单详情 - 仅admin"""
     menu_service = MenuService(db)
@@ -161,7 +177,7 @@ async def update_menu(
     menu_id: int,
     menu_update: MenuUpdate,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(require_admin_role_for_menu)
 ):
     """更新菜单 - 仅admin"""
     menu_service = MenuService(db)
@@ -219,7 +235,7 @@ async def update_menu(
 async def delete_menu(
     menu_id: int,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(require_admin_role_for_menu)
 ):
     """删除菜单 - 仅admin"""
     menu_service = MenuService(db)
