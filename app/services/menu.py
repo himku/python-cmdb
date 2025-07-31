@@ -162,6 +162,7 @@ class MenuService:
             child_tree = await self._build_menu_tree(child, include_disabled)
             child_trees.append(child_tree)
         
+        # 直接构建MenuTree，避免触发ORM关系
         return MenuTree(
             id=menu.id,
             name=menu.name,

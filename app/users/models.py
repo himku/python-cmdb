@@ -54,7 +54,7 @@ class Permission(Base):
     roles = relationship("Role", secondary=role_permission, back_populates="permissions")
 
 class Menu(Base):
-    """菜单模型 - 参考fastapi-naive-admin架构"""
+    """菜单模型"""
     __tablename__ = "menus"
     
     id = Column(Integer, primary_key=True, autoincrement=True)
@@ -92,9 +92,9 @@ class Menu(Base):
     created_at = Column(sa.DateTime, nullable=False, server_default=sa.func.now())
     updated_at = Column(sa.DateTime, nullable=False, server_default=sa.func.now(), onupdate=sa.func.now())
     
-    # 关系
-    children = relationship("Menu", back_populates="parent", cascade="all, delete-orphan")
-    parent = relationship("Menu", back_populates="children", remote_side=[id])
+    # 关系 - 使用懒加载避免异步问题
+    children = relationship("Menu", back_populates="parent", cascade="all, delete-orphan", lazy="select")
+    parent = relationship("Menu", back_populates="children", remote_side=[id], lazy="select")
     
     def __repr__(self):
         return f"<Menu(id={self.id}, name='{self.name}', title='{self.title}')>"

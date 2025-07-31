@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
+import json
 
 from app.api.deps import get_db, get_current_active_user
 from app.api.v1.endpoints.roles import require_admin_role  # 重用admin权限检查
@@ -15,7 +16,7 @@ router = APIRouter()
 
 # ==================== 管理员菜单管理 API ====================
 
-@router.get("/admin/menus/", response_model=List[Menu])
+@router.get("/admin/menus", response_model=List[Menu])
 async def list_menus(
     skip: int = 0,
     limit: int = 1000,
@@ -24,7 +25,43 @@ async def list_menus(
 ):
     """获取所有菜单列表 - 仅admin"""
     menu_service = MenuService(db)
-    return await menu_service.get_menus(skip=skip, limit=limit)
+    menus = await menu_service.get_menus(skip=skip, limit=limit)
+    # 转换为Pydantic模型，避免ORM关系问题
+    result = []
+    for menu in menus:
+        # 解析meta
+        meta = {}
+        if menu.meta:
+            try:
+                meta = json.loads(menu.meta)
+            except:
+                meta = {}
+        
+        menu_dict = {
+            "id": menu.id,
+            "name": menu.name,
+            "title": menu.title,
+            "path": menu.path,
+            "component": menu.component,
+            "redirect": menu.redirect,
+            "parent_id": menu.parent_id,
+            "sort": menu.sort,
+            "level": menu.level,
+            "menu_type": menu.menu_type,
+            "is_visible": menu.is_visible,
+            "is_enabled": menu.is_enabled,
+            "is_cache": menu.is_cache,
+            "is_frame": menu.is_frame,
+            "icon": menu.icon,
+            "icon_type": menu.icon_type,
+            "permission_code": menu.permission_code,
+            "meta": meta,
+            "created_at": menu.created_at,
+            "updated_at": menu.updated_at,
+            "children": []
+        }
+        result.append(Menu(**menu_dict))
+    return result
 
 @router.get("/admin/menus/tree", response_model=List[MenuTree])
 async def get_menu_tree(
@@ -36,7 +73,7 @@ async def get_menu_tree(
     menu_service = MenuService(db)
     return await menu_service.get_menu_tree(include_disabled=include_disabled)
 
-@router.post("/admin/menus/", response_model=Menu)
+@router.post("/admin/menus", response_model=Menu)
 async def create_menu(
     menu: MenuCreate,
     db: AsyncSession = Depends(get_db),
@@ -79,13 +116,45 @@ async def get_menu(
 ):
     """获取菜单详情 - 仅admin"""
     menu_service = MenuService(db)
-    menu = await menu_service.get_menu(menu_id)
-    if not menu:
+    menu_obj = await menu_service.get_menu(menu_id)
+    if not menu_obj:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="菜单不存在"
         )
-    return menu
+    
+    # 转换为Pydantic模型
+    meta = {}
+    if menu_obj.meta:
+        try:
+            meta = json.loads(menu_obj.meta)
+        except:
+            meta = {}
+    
+    menu_dict = {
+        "id": menu_obj.id,
+        "name": menu_obj.name,
+        "title": menu_obj.title,
+        "path": menu_obj.path,
+        "component": menu_obj.component,
+        "redirect": menu_obj.redirect,
+        "parent_id": menu_obj.parent_id,
+        "sort": menu_obj.sort,
+        "level": menu_obj.level,
+        "menu_type": menu_obj.menu_type,
+        "is_visible": menu_obj.is_visible,
+        "is_enabled": menu_obj.is_enabled,
+        "is_cache": menu_obj.is_cache,
+        "is_frame": menu_obj.is_frame,
+        "icon": menu_obj.icon,
+        "icon_type": menu_obj.icon_type,
+        "permission_code": menu_obj.permission_code,
+        "meta": meta,
+        "created_at": menu_obj.created_at,
+        "updated_at": menu_obj.updated_at,
+        "children": []
+    }
+    return Menu(**menu_dict)
 
 @router.put("/admin/menus/{menu_id}", response_model=Menu)
 async def update_menu(

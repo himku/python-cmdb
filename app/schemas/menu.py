@@ -66,6 +66,9 @@ class MenuInDB(MenuBase):
 class Menu(MenuInDB):
     """菜单响应模型"""
     children: Optional[List['Menu']] = Field(default_factory=list, description="子菜单列表")
+    
+    class Config:
+        from_attributes = True
 
 # 用于解决循环引用
 Menu.model_rebuild()
