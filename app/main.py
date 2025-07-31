@@ -5,12 +5,12 @@ from app.users.manager import get_user_manager
 from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import JWTStrategy, CookieTransport, BearerTransport, AuthenticationBackend
 from app.core.config import get_settings
-from app.schemas.user import User
+from app.schemas.user import User as UserRead, UserCreate
 
 settings = get_settings()
 
 def get_jwt_strategy() -> JWTStrategy:
-    return JWTStrategy(secret=settings.SECRET_KEY)
+    return JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=3600)
 
 cookie_transport = CookieTransport(cookie_name="cmdb_auth", cookie_max_age=3600)
 bearer_transport = BearerTransport(tokenUrl="auth/login")
@@ -26,7 +26,7 @@ auth_backend_bearer = AuthenticationBackend(
     get_strategy=get_jwt_strategy,
 )
 
-fastapi_users = FastAPIUsers[User, str](
+fastapi_users = FastAPIUsers[User, int](
     get_user_manager,
     [auth_backend_cookie, auth_backend_bearer],
 )
@@ -35,9 +35,15 @@ from app.api.v1.api import api_router
 
 app = FastAPI()
 
-# 注册 BearerTransport 路由，返回 200+JSON
+# 注册认证路由
 app.include_router(
     fastapi_users.get_auth_router(auth_backend_bearer),
+    prefix="/auth",
+    tags=["auth"],
+)
+# 注册用户注册路由
+app.include_router(
+    fastapi_users.get_register_router(UserRead, UserCreate),
     prefix="/auth",
     tags=["auth"],
 )

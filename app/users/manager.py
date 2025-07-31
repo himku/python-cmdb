@@ -8,12 +8,12 @@ from typing import AsyncGenerator
 
 settings = get_settings()
 
-class UserManager(BaseUserManager[User, str]):
+class UserManager(BaseUserManager[User, int]):
     reset_password_token_secret = settings.SECRET_KEY
     verification_token_secret = settings.SECRET_KEY
 
     @staticmethod
-    def parse_id(user_id: str) -> str:
+    def parse_id(user_id: int) -> int:
         return user_id
 
     async def on_after_register(self, user: User, request=None):

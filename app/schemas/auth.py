@@ -7,7 +7,7 @@ class Token(BaseModel):
     token_type: str
 
 class TokenPayload(BaseModel):
-    sub: Optional[str] = None
+    sub: Optional[int] = None  # 改为整数类型，匹配新的用户ID
     exp: Optional[int] = None  # 时间戳是整数
     aud: Optional[list[str]] = None  # FastAPI-Users可能包含audience字段
     

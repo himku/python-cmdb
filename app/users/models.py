@@ -1,6 +1,5 @@
-import uuid
 import sqlalchemy as sa
-from sqlalchemy import String, Boolean, Column, Table, ForeignKey
+from sqlalchemy import Integer, String, Boolean, Column, Table, ForeignKey
 from sqlalchemy.orm import relationship
 from app.database.session import Base
 
@@ -8,21 +7,21 @@ from app.database.session import Base
 user_role = Table(
     "user_role",
     Base.metadata,
-    Column("user_id", String(36), ForeignKey("users.id")),
-    Column("role_id", String(36), ForeignKey("roles.id"))
+    Column("user_id", Integer, ForeignKey("users.id")),
+    Column("role_id", Integer, ForeignKey("roles.id"))
 )
 
 # 角色-权限多对多关联表
 role_permission = Table(
     "role_permission",
     Base.metadata,
-    Column("role_id", String(36), ForeignKey("roles.id")),
-    Column("permission_id", String(36), ForeignKey("permissions.id"))
+    Column("role_id", Integer, ForeignKey("roles.id")),
+    Column("permission_id", Integer, ForeignKey("permissions.id"))
 )
 
 class User(Base):
     __tablename__ = "users"
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
     username = Column(String(255), unique=True, index=True, nullable=False)
     full_name = Column(String(100), nullable=True)
@@ -37,7 +36,7 @@ class User(Base):
 
 class Role(Base):
     __tablename__ = "roles"
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(50), unique=True, index=True, nullable=False)
     description = Column(String(255), nullable=True)
     # 角色与用户多对多
@@ -47,7 +46,7 @@ class Role(Base):
 
 class Permission(Base):
     __tablename__ = "permissions"
-    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    id = Column(Integer, primary_key=True, autoincrement=True)
     name = Column(String(100), unique=True, index=True, nullable=False)
     code = Column(String(100), unique=True, index=True, nullable=False)
     description = Column(String(255), nullable=True)

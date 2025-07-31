@@ -9,7 +9,7 @@ class UserService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def get_user(self, user_id: str) -> Optional[User]:
+    async def get_user(self, user_id: int) -> Optional[User]:
         stmt = select(User).filter(User.id == user_id)
         result = await self.db.execute(stmt)
         return result.scalar_one_or_none()
@@ -38,7 +38,7 @@ class UserService:
         await self.db.refresh(db_user)
         return db_user
 
-    async def update_user(self, user_id: str, user: UserUpdate) -> Optional[User]:
+    async def update_user(self, user_id: int, user: UserUpdate) -> Optional[User]:
         db_user = await self.get_user(user_id)
         if not db_user:
             return None
@@ -54,7 +54,7 @@ class UserService:
         await self.db.refresh(db_user)
         return db_user
 
-    async def delete_user(self, user_id: str) -> bool:
+    async def delete_user(self, user_id: int) -> bool:
         db_user = await self.get_user(user_id)
         if not db_user:
             return False

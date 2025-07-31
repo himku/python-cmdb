@@ -40,18 +40,10 @@ async def get_current_user(
     user = None
     if hasattr(token_data, "sub") and token_data.sub:
         from sqlalchemy import select
-        # 按用户ID查找
+        # 按用户ID查找（现在是整数）
         stmt = select(User).filter(User.id == token_data.sub)
         result = await db.execute(stmt)
         user = result.scalar_one_or_none()
-        
-        # 如果按ID没找到，尝试按用户名或邮箱查找
-        if not user:
-            stmt = select(User).filter(
-                (User.username == token_data.sub) | (User.email == token_data.sub)
-            )
-            result = await db.execute(stmt)
-            user = result.scalar_one_or_none()
     
     if not user:
         raise credentials_exception

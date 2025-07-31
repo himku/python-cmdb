@@ -1,7 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
-from uuid import UUID
 
 from app.schemas.role import Role  # Add this import if Role is defined in app/schemas/role.py
 
@@ -22,7 +21,7 @@ class UserUpdate(BaseModel):
     is_active: Optional[bool] = None
 
 class UserInDBBase(UserBase):
-    id: UUID
+    id: int
     is_superuser: bool
     created_at: datetime
     updated_at: datetime
