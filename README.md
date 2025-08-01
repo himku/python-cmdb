@@ -1,83 +1,158 @@
 # CMDB (Configuration Management Database)
 
-一个基于 FastAPI 构建的现代化配置管理数据库系统，提供完整的资产管理、用户认证和权限控制功能。
+一个基于 FastAPI 构建的现代化配置管理数据库系统，提供完整的资产管理、用户认证和**企业级菜单权限控制**功能。
 
-## 功能特点
+## ✨ 核心功能特点
 
-- 🔐 用户认证和授权
-  - JWT token 认证
-  - 基于角色的访问控制 (RBAC)
-  - 细粒度的权限管理
-- 💻 资产管理
-  - 资产信息管理
-  - 资产状态追踪
-  - 资产关系管理
-- 🚀 现代化技术栈
-  - FastAPI 框架
-  - MySQL 数据库
-  - Redis 缓存
-  - SQLAlchemy ORM
-  - Pydantic 数据验证
-- 📚 API 文档
-  - 自动生成的 Swagger UI
-  - ReDoc 文档
-- 🐳 Docker 支持
-  - 容器化部署
-  - 环境隔离
+### 🔐 企业级认证与权限系统
+- **JWT Token 认证** - 安全的无状态认证
+- **完整的RBAC权限控制** - 用户↔角色↔权限的多对多关系
+- **层级菜单权限管理** - 支持无限级菜单嵌套和权限控制
+- **细粒度权限控制** - 页面级+按钮级双重权限验证
+- **动态路由生成** - 根据用户权限自动生成前端路由
+
+### 🗂️ 智能菜单管理系统
+- **三种菜单类型** - 目录(1)、菜单(2)、按钮(3)
+- **层级结构支持** - 无限级菜单嵌套，自动层级计算
+- **权限映射** - 菜单与权限代码的精确关联
+- **循环引用检测** - 防止菜单层级形成循环
+- **可视化管理** - 树形结构的菜单管理界面
+
+### 💻 资产管理能力
+- 资产信息管理
+- 资产状态追踪  
+- 资产关系管理
+
+### 🚀 现代化技术栈
+- **FastAPI** - 高性能异步Web框架
+- **MySQL** - 关系型数据库
+- **Redis** - 高性能缓存
+- **SQLAlchemy (异步)** - 现代化ORM
+- **Pydantic** - 数据验证和序列化
+- **Alembic** - 数据库迁移管理
+
+### 📚 完整的API文档
+- 自动生成的 Swagger UI
+- ReDoc 文档
+- 清晰的权限分级说明
+
+### 🐳 生产就绪
+- Docker 容器化支持
+- 环境隔离
+- 健康检查
+- 日志管理
+
+## 🛡️ 权限控制架构
+
+### API接口权限分级
+
+#### 🔓 公开接口 (无需认证)
+```bash
+/health                    # 健康检查
+/docs, /redoc             # API文档
+/auth/login               # 用户登录
+/auth/register            # 用户注册
+/auth/logout              # 用户登出
+```
+
+#### 🔐 登录用户接口 (需要Bearer Token)
+```bash
+# 用户管理
+/api/v1/users/*           # 用户CRUD操作
+
+# 用户菜单获取 
+/api/v1/menus/user        # 获取用户菜单和路由配置
+/api/v1/menus/tree        # 获取用户菜单树
+```
+
+#### 🛡️ 系统管理接口 (需要admin角色)
+```bash
+# 角色权限管理
+/api/v1/admin/roles/*           # 角色管理
+/api/v1/admin/permissions/*     # 权限管理
+/api/v1/admin/roles/{id}/permissions/{id}    # 角色权限关联
+/api/v1/admin/users/{id}/roles/{id}          # 用户角色关联
+
+# 菜单管理
+/api/v1/admin/menus            # 获取所有菜单列表
+/api/v1/admin/menus/tree       # 获取菜单树结构
+/api/v1/admin/menus/*          # 菜单CRUD操作
+```
+
+### 权限控制特性
+- **401 Unauthorized** - 未登录或token无效
+- **403 Forbidden** - 权限不足（友好错误提示）
+- **404 Not Found** - 资源不存在
+- **400 Bad Request** - 数据验证失败
 
 ## 技术栈
 
-- Python 3.9+
-- FastAPI
-- MySQL
-- Redis
-- SQLAlchemy
-- Alembic
-- Pydantic
-- JWT
-- Docker
+### 后端核心
+- **Python 3.11+** - 现代Python版本
+- **FastAPI** - 高性能异步Web框架
+- **FastAPI-Users** - 企业级用户认证管理
+- **SQLAlchemy 2.0** - 现代异步ORM
+- **Alembic** - 数据库迁移工具
+- **Pydantic** - 数据验证和序列化
+
+### 数据存储
+- **MySQL** - 主数据库 (支持异步aiomysql)
+- **Redis** - 缓存和会话存储
+
+### 安全认证
+- **JWT** - JSON Web Token认证
+- **Argon2/Bcrypt** - 密码哈希算法
+- **CORS** - 跨域资源共享
+
+### 部署运维
+- **Docker** - 容器化部署
+- **uvicorn** - ASGI服务器
 
 ## 快速开始
 
 ### 环境要求
 
-- Python 3.9 或更高版本
+- Python 3.11 或更高版本
 - MySQL 数据库
 - Redis 服务器
 - Docker (可选)
 
 ### 安装与初始化
 
-1. 克隆仓库：
+1. **克隆仓库**：
 
 ```bash
 git clone https://github.com/himku/python-cmdb.git
 cd python-cmdb
 ```
 
-2. 安装依赖（推荐用 uv，或用 pip）：
+2. **安装依赖**（推荐用 uv）：
 
 ```bash
 # 安装 uv（如果还没有安装）
 pip install uv
 
-# 安装项目依赖
+# 创建虚拟环境并安装依赖
+uv venv
+source .venv/bin/activate  # Linux/Mac
+# 或 .\.venv\Scripts\activate  # Windows
+
 uv sync
-# 或用 pip
-pip install -r requirements.txt
+# 或使用 pip
+# pip install -r requirements.txt
 ```
 
-3. 配置环境变量：
+3. **配置环境变量**：
 
 ```bash
 cp .env.example .env
 # 编辑 .env 文件，设置必要的环境变量：
 # - MYSQL_HOST, MYSQL_USER, MYSQL_PASSWORD, MYSQL_DB
-# - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB
+# - REDIS_HOST, REDIS_PORT, REDIS_PASSWORD, REDIS_DB  
 # - SECRET_KEY
 ```
 
-4. 准备数据库和 Redis：
+4. **准备数据库和 Redis**：
 
 ```bash
 # 创建 MySQL 数据库
@@ -87,11 +162,17 @@ mysql -u root -p -e "CREATE DATABASE cmdb CHARACTER SET utf8mb4 COLLATE utf8mb4_
 redis-server
 ```
 
-5. 初始化数据库结构（Alembic 迁移）：
+5. **初始化数据库结构**：
 
 ```bash
 # 运行数据库迁移
 alembic upgrade head
+
+# 初始化角色权限数据
+python app/database/init_roles_permissions.py
+
+# 初始化菜单数据  
+python app/database/init_menus.py
 ```
 
 ### 运行应用
@@ -99,6 +180,8 @@ alembic upgrade head
 #### 开发环境
 
 ```bash
+python run.py
+# 或
 uvicorn app.main:app --reload
 ```
 
@@ -118,238 +201,274 @@ docker build -t cmdb .
 docker run -p 8000:8000 cmdb
 ```
 
+## 🗂️ 菜单权限管理系统
+
+### 菜单类型说明
+
+```json
+{
+  "menu_type": 1,  // 目录 - 用于分组，无具体页面
+  "menu_type": 2,  // 菜单 - 实际页面，有路由路径
+  "menu_type": 3   // 按钮 - 页面内操作权限
+}
+```
+
+### 菜单层级结构示例
+
+```
+工作台 (菜单)
+├── path: /dashboard
+└── permission_code: dashboard:view
+
+系统管理 (目录)
+├── path: /system
+├── permission_code: system:manage
+├── 用户管理 (菜单)
+│   ├── path: /system/user
+│   ├── permission_code: user:manage  
+│   ├── 新增用户 (按钮)
+│   │   └── permission_code: user:add
+│   ├── 编辑用户 (按钮)
+│   │   └── permission_code: user:edit
+│   └── 删除用户 (按钮)
+│       └── permission_code: user:delete
+├── 角色管理 (菜单)
+├── 权限管理 (菜单)
+└── 菜单管理 (菜单)
+```
+
+### 菜单API使用示例
+
+#### 普通用户获取菜单
+```bash
+curl -X GET 'http://localhost:8000/api/v1/menus/user' \
+  -H 'Authorization: Bearer {user_token}'
+```
+
+**响应示例：**
+```json
+{
+  "menus": [
+    {
+      "id": 1,
+      "name": "dashboard",
+      "title": "工作台",
+      "path": "/dashboard",
+      "icon": "mdi:monitor-dashboard",
+      "menu_type": 2,
+      "children": []
+    }
+  ],
+  "routes": [
+    {
+      "name": "dashboard",
+      "path": "/dashboard", 
+      "component": "views/dashboard/index.vue",
+      "meta": {
+        "title": "工作台",
+        "icon": "mdi:monitor-dashboard",
+        "keepAlive": true
+      }
+    }
+  ],
+  "permissions": ["dashboard:view", "user:manage"]
+}
+```
+
+#### 管理员创建菜单
+```bash
+curl -X POST 'http://localhost:8000/api/v1/admin/menus' \
+  -H 'Authorization: Bearer {admin_token}' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "name": "reports",
+    "title": "报表管理",
+    "path": "/reports",
+    "component": "views/reports/index.vue",
+    "menu_type": 2,
+    "icon": "mdi:chart-line",
+    "permission_code": "reports:view",
+    "sort": 10
+  }'
+```
+
+## 📁 项目结构
+
+```
+python-cmdb/
+├── app/                           # 应用主目录
+│   ├── main.py                   # 🚀 FastAPI应用入口
+│   ├── core/                     # 🔧 核心功能模块
+│   │   ├── config.py            # ⚙️ 配置管理
+│   │   ├── security.py          # 🔐 JWT和密码加密
+│   │   └── logging.py           # 📝 日志配置
+│   ├── api/                      # 🌐 API路由层
+│   │   ├── deps.py              # 💉 依赖注入
+│   │   └── v1/                  # 📋 API版本控制
+│   │       ├── api.py           # 🔗 路由聚合器
+│   │       └── endpoints/       # 🎯 具体API端点
+│   │           ├── users.py     # 👤 用户管理API
+│   │           ├── roles.py     # 🛡️ 角色权限管理API
+│   │           └── menus.py     # 🗂️ 菜单管理API
+│   ├── schemas/                  # 📐 Pydantic数据模式
+│   │   ├── user.py              # 👤 用户数据模式
+│   │   ├── auth.py              # 🔐 认证数据模式
+│   │   ├── role.py              # 👥 角色权限模式
+│   │   ├── menu.py              # 🗂️ 菜单数据模式
+│   │   └── asset.py             # 💻 资产管理模式
+│   ├── services/                 # 🔧 业务逻辑层
+│   │   ├── user.py              # 👤 用户业务逻辑
+│   │   ├── role.py              # 🛡️ 角色业务逻辑
+│   │   ├── permission.py        # 🔑 权限业务逻辑
+│   │   └── menu.py              # 🗂️ 菜单业务逻辑
+│   ├── users/                    # 👥 用户认证模块
+│   │   ├── models.py            # 🏛️ 用户、角色、权限、菜单模型
+│   │   └── manager.py           # 👤 FastAPI-Users管理器
+│   ├── database/                 # 🗄️ 数据库层
+│   │   ├── session.py           # 🔗 数据库会话管理
+│   │   ├── redis.py             # 🔴 Redis连接管理
+│   │   ├── init_db.py           # 🚀 数据库初始化
+│   │   ├── init_roles_permissions.py  # 🛡️ 角色权限初始化
+│   │   ├── init_menus.py        # 🗂️ 菜单数据初始化
+│   │   └── migrations/          # 📈 Alembic数据库迁移
+│   └── crud/                     # 📝 数据访问层
+│       └── crud.py              # 🔧 通用CRUD操作
+├── alembic.ini                   # 🔄 数据库迁移配置
+├── pyproject.toml               # 📦 项目依赖和配置
+├── uv.lock                      # 🔒 依赖锁定文件
+├── Dockerfile                   # 🐳 容器化配置
+├── run.py                       # 🏃 应用启动脚本
+└── README.md                    # 📖 项目文档
+```
+
+## 🏗️ 系统架构深度解析
+
+### 🔐 RBAC权限控制架构
+
+#### 数据模型关系
+```
+Users ←→ user_role ←→ Roles ←→ role_permission ←→ Permissions
+                                       ↓
+                                    Menus (permission_code)
+```
+
+#### 权限控制流程
+1. **用户登录** → 获取JWT Token
+2. **访问接口** → Token验证 → 获取用户角色
+3. **权限检查** → 角色权限查询 → 访问控制决策
+4. **菜单生成** → 根据权限过滤菜单 → 返回可访问菜单树
+
+### 🗂️ 菜单管理架构
+
+#### 核心表结构
+**menus表**:
+```sql
+CREATE TABLE menus (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  name VARCHAR(100) NOT NULL COMMENT '菜单名称',
+  title VARCHAR(100) NOT NULL COMMENT '菜单标题',
+  path VARCHAR(255) COMMENT '路由路径',
+  component VARCHAR(255) COMMENT '组件路径',
+  parent_id INT COMMENT '父菜单ID',
+  sort INT DEFAULT 0 COMMENT '排序序号',
+  level INT DEFAULT 1 COMMENT '菜单层级',
+  menu_type INT DEFAULT 1 COMMENT '菜单类型',
+  is_visible BOOLEAN DEFAULT TRUE COMMENT '是否显示',
+  is_enabled BOOLEAN DEFAULT TRUE COMMENT '是否启用',
+  icon VARCHAR(100) COMMENT '图标',
+  permission_code VARCHAR(100) COMMENT '权限代码',
+  meta TEXT COMMENT '元数据配置',
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  FOREIGN KEY (parent_id) REFERENCES menus(id)
+);
+```
+
+#### 菜单特性
+- **层级管理**: 自引用外键实现无限级嵌套
+- **权限映射**: permission_code字段关联权限系统
+- **元数据支持**: meta字段存储自定义配置
+- **排序控制**: sort字段控制菜单显示顺序
+- **类型区分**: menu_type区分目录、菜单、按钮
+
+### 🚀 异步架构设计
+
+#### 核心特性
+- **全异步I/O**: 数据库、Redis、HTTP请求全异步
+- **连接池管理**: 高效的连接复用
+- **依赖注入**: FastAPI的依赖注入系统
+- **会话管理**: 异步数据库会话生命周期管理
+
+#### 性能优势
+- **高并发**: 支持大量并发请求
+- **低延迟**: 异步操作避免阻塞
+- **资源高效**: 连接池和会话复用
+
 ## API 文档
 
 启动应用后，可以通过以下地址访问 API 文档：
 
-- Swagger UI: <http://localhost:8000/docs>
-- ReDoc: <http://localhost:8000/redoc>
+- **Swagger UI**: <http://localhost:8000/docs>
+- **ReDoc**: <http://localhost:8000/redoc>
 
-### API 接口权限说明
+### 权限测试示例
 
-#### 🔓 公开接口 (无需token)
-- `/health` - 健康检查
-- `/docs`, `/redoc`, `/openapi.json` - API文档
-- `/auth/login` - 用户登录
-- `/auth/logout` - 用户登出
-- `/auth/register` - 用户注册
-- `/auth/jwt-cookie/*` - Cookie认证相关接口
+```bash
+# 1. 未认证访问admin接口 → 401
+curl http://localhost:8000/api/v1/admin/menus
 
-#### 🔐 受保护接口 (需要Bearer Token)
-- `/api/v1/users/*` - 用户管理接口
-  - `GET /api/v1/users/` - 获取用户列表 (仅超级用户)
-  - `POST /api/v1/users/` - 创建用户 (仅超级用户)
-  - `GET /api/v1/users/{user_id}` - 获取用户详情 (超级用户或本人)
-  - `PUT /api/v1/users/{user_id}` - 更新用户信息 (超级用户或本人)
-  - `DELETE /api/v1/users/{user_id}` - 删除用户 (仅超级用户)
-- 未来的资产管理接口等
+# 2. 普通用户访问admin接口 → 403 + 友好提示
+curl -H "Authorization: Bearer user_token" \
+     http://localhost:8000/api/v1/admin/menus
+# 响应: {"detail": "只有admin角色可以执行此操作"}
 
-#### 使用方式
-1. 首先调用登录接口获取token
-2. 在后续请求的Header中添加: `Authorization: Bearer <your_token>`
-
-## 项目结构
-
-```
-cmdb/
-├── app/                           # 应用主目录
-│   ├── core/                     # 核心功能模块
-│   │   ├── config.py            # 配置管理
-│   │   ├── logging.py           # 日志配置
-│   │   └── security.py          # 安全相关
-│   ├── api/                      # API 路由
-│   │   ├── deps.py              # 依赖注入
-│   │   ├── asset.py             # 资产管理 API
-│   │   ├── user.py              # 用户管理 API
-│   │   └── auth.py              # 认证 API
-│   ├── models/                   # 数据模型
-│   │   ├── asset.py             # 资产模型
-│   │   ├── user.py              # 用户模型
-│   │   └── role.py              # 角色模型
-│   ├── schemas/                  # Pydantic 模型
-│   │   ├── asset.py             # 资产模式
-│   │   ├── user.py              # 用户模式
-│   │   └── auth.py              # 认证模式
-│   ├── crud/                     # CRUD 操作
-│   │   ├── asset.py             # 资产 CRUD
-│   │   ├── user.py              # 用户 CRUD
-│   │   └── role.py              # 角色 CRUD
-│   ├── database/                 # 数据库配置
-│   │   ├── session.py           # 数据库会话管理
-│   │   ├── redis.py             # Redis 连接管理
-│   │   └── init_db.py           # 数据库初始化
-│   ├── services/                 # 业务逻辑
-│   │   ├── asset_service.py     # 资产服务
-│   │   ├── user_service.py      # 用户服务
-│   │   └── auth_service.py      # 认证服务
-│   └── main.py                  # 应用入口
-├── alembic/                      # 数据库迁移
-├── tests/                        # 测试文件
-├── requirements.txt              # 项目依赖
-├── Dockerfile                    # Docker 配置
-└── README.md                     # 项目文档
+# 3. 普通用户访问用户菜单 → 200
+curl -H "Authorization: Bearer user_token" \
+     http://localhost:8000/api/v1/menus/user
 ```
 
-## 🏗️ 代码库架构深度解析
+## 🔧 系统亮点
 
-### 📋 项目概述
-这是一个基于 **FastAPI** 构建的现代化**配置管理数据库（CMDB）**系统，主要用于IT资产管理、用户认证和权限控制。
+### 技术创新
+1. **完整的企业级RBAC** - 用户→角色→权限→菜单的完整链路
+2. **动态菜单系统** - 基于权限的菜单动态生成
+3. **异步优先架构** - 现代Python异步技术栈
+4. **细粒度权限控制** - 页面级+按钮级双重权限
+5. **智能权限检查** - 友好的错误提示和权限验证
 
-### 🔧 完整技术栈
-- **后端框架**: FastAPI 
-- **数据库**: MySQL (使用 aiomysql 异步驱动)
-- **缓存**: Redis
-- **ORM**: SQLAlchemy (异步)
-- **认证**: FastAPI-Users + JWT
+### 架构优势
+- **高性能**: 异步I/O + 连接池 + 缓存
+- **高安全**: 多层权限验证 + JWT认证
+- **高可维护**: 清晰的分层架构和文档
+- **高扩展**: 模块化设计支持功能扩展
 
-- **数据库迁移**: Alembic
-- **数据验证**: Pydantic
-- **容器化**: Docker
+### 生产就绪特性
+- **完整的初始化脚本** - 一键初始化角色权限和菜单
+- **Docker容器化** - 生产环境部署支持
+- **健康检查** - 应用状态监控
+- **错误处理** - 完善的异常处理和日志
+- **API文档** - 自动生成的完整文档
 
-### 📁 详细目录结构分析
+## 📈 项目状态
 
-#### 核心应用模块 (`app/`)
-```
-app/
-├── main.py                 # 🚀 应用入口，配置FastAPI应用和路由
-├── core/                   # 🔧 核心功能模块
-│   ├── config.py          # ⚙️ 配置管理（数据库、Redis、JWT等）
-│   ├── security.py        # 🔐 JWT令牌和密码加密处理
-│   └── logging.py         # 📝 日志配置
-├── api/                    # 🌐 API路由层
-│   ├── deps.py            # 💉 依赖注入（数据库连接、用户认证）
-│   └── v1/                # 📋 API版本控制
-│       ├── api.py         # 🔗 API路由聚合器
-│       └── endpoints/     # 🎯 具体API端点
-│           ├── users.py   # 👤 用户管理API（CRUD操作）
-│           └── test.py    # 🧪 测试端点
-├── models/                 # 🏛️ 数据模型层
-│   └── （用户、角色、权限模型在users/models.py中）
-├── schemas/               # 📐 Pydantic数据验证模式
-│   ├── user.py           # 👤 用户数据模式
-│   ├── auth.py           # 🔐 认证数据模式
-│   ├── role.py           # 👥 角色权限模式
-│   └── asset.py          # 💻 资产管理模式
-├── services/              # 🔧 业务逻辑层
-│   └── user.py           # 👤 用户业务逻辑
-├── users/                 # 👥 用户管理模块
-│   ├── models.py         # 🏛️ 用户、角色、权限数据模型
-│   └── manager.py        # 👤 FastAPI-Users用户管理器
-├── database/              # 🗄️ 数据库层
-│   ├── session.py        # 🔗 数据库连接会话
-│   ├── redis.py          # 🔴 Redis连接管理
-│   ├── init_db.py        # 🚀 数据库初始化
-│   └── migrations/       # 📈 Alembic数据库迁移
-└── crud/                  # 📝 数据访问层
-    └── crud.py           # 🔧 通用CRUD操作
-```
-
-#### 配置和部署文件
-```
-├── pyproject.toml         # 📦 项目依赖和配置
-├── alembic.ini           # 🔄 数据库迁移配置
-├── Dockerfile            # 🐳 容器化配置
-
-└── scripts/              # 📜 数据库初始化脚本
-```
-
-### 🔐 认证与权限系统
-
-#### 1. 认证层次
-- **多重认证后端**: 支持Cookie和Bearer Token两种认证方式
-- **JWT策略**: 使用FastAPI-Users进行JWT令牌管理
-- **用户管理**: 基于FastAPI-Users的用户注册、登录、验证
-
-#### 2. 权限控制架构
-- **RBAC模型**: 用户 ↔ 角色 ↔ 权限的多对多关系
-- **基于角色的权限控制**: 精细化权限管理
-  - 支持多层级权限控制
-  - 基于资源和操作的细粒度控制
-
-#### 3. 数据模型关系
-```
-Users ←→ user_role ←→ Roles ←→ role_permission ←→ Permissions
-```
-
-### 🗄️ 数据库架构
-
-#### 核心表结构
-1. **users**: 用户基础信息
-   - UUID主键、邮箱、用户名、密码哈希
-   - 激活状态、超级用户标记、验证状态
-   - 创建时间、更新时间
-
-2. **roles**: 角色定义
-   - UUID主键、角色名称、描述
-
-3. **permissions**: 权限定义  
-   - UUID主键、权限名称、权限代码、描述
-
-
-
-#### 数据库连接特性
-- **异步MySQL**: 使用aiomysql驱动实现异步数据库操作
-- **连接池**: 通过SQLAlchemy管理数据库连接
-- **会话管理**: 异步会话和依赖注入模式
-
-### 🔴 缓存系统 (Redis)
-- **连接池管理**: 提供高效的Redis连接复用
-- **配置灵活**: 支持密码认证和多数据库
-- **健康检查**: 提供连接状态检测功能
-
-### 🛠️ 开发和部署架构
-
-#### API设计模式
-- **RESTful风格**: 标准的CRUD操作
-- **版本控制**: `/api/v1`前缀进行版本管理  
-- **权限控制**: 基于用户角色的接口访问控制
-- **自动文档**: Swagger UI和ReDoc文档生成
-
-#### 测试框架
-- **单元测试**: 使用pytest进行API测试
-- **测试客户端**: FastAPI TestClient集成
-
-#### 容器化部署
-- **多阶段构建**: Python 3.9-slim基础镜像
-- **安全配置**: 非root用户运行
-- **环境变量**: 通过.env文件管理配置
-
-### 🔧 系统关键特性
-
-1. **异步架构**: 全异步的数据库和Redis操作
-2. **模块化设计**: 清晰的分层架构（API-Service-Model）
-3. **权限精细化**: RBAC角色权限控制
-4. **配置管理**: 基于环境变量的配置系统
-5. **数据验证**: Pydantic模式验证
-6. **迁移管理**: Alembic数据库版本控制
-7. **CORS支持**: 跨域资源共享配置
-8. **健康检查**: 应用健康状态监控
-
-### 🚀 系统亮点
-
-#### 架构优势
-- **高性能**: 异步I/O操作，支持高并发
-- **可扩展**: 微服务友好的模块化设计
-- **安全**: 多层次的认证和权限控制
-- **可维护**: 清晰的代码分层和文档
-
-#### 技术创新
-- **FastAPI + SQLAlchemy异步**: 现代Python异步框架组合
-- **RBAC权限模型**: 灵活强大的权限管理
-- **FastAPI-Users集成**: 开箱即用的用户管理系统
-
-### 📈 项目状态
-根据当前开发状态，系统具备：
-- ✅ 完整的用户认证系统
-- ✅ RBAC权限控制框架
-- ✅ RBAC权限控制系统
+### 已完成功能
+- ✅ 完整的用户认证系统 (FastAPI-Users)
+- ✅ 企业级RBAC权限控制
+- ✅ 智能菜单权限管理系统
+- ✅ 动态路由生成
+- ✅ 细粒度权限控制 (页面+按钮)
 - ✅ 异步数据库架构
 - ✅ Redis缓存集成
 - ✅ API文档自动生成
 - ✅ 容器化部署支持
-- 🔄 资产管理功能开发中
+- ✅ 完整的初始化脚本
 
-这个CMDB系统采用现代化的微服务架构设计，适合企业级的IT资产管理需求，具备优秀的性能、安全性和可扩展性。
+### 开发中功能
+- 🔄 资产管理功能
+- 🔄 审计日志系统
+- 🔄 数据备份恢复
+
+这个CMDB系统采用现代化的企业级架构设计，特别是完整的菜单权限管理系统，适合中大型企业的IT资产管理和权限控制需求，具备优秀的性能、安全性和可扩展性。
 
 ## 开发指南
 

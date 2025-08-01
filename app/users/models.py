@@ -1,6 +1,7 @@
 import sqlalchemy as sa
 from sqlalchemy import Integer, String, Boolean, Column, Table, ForeignKey
 from sqlalchemy.orm import relationship
+from fastapi_users_db_sqlalchemy import SQLAlchemyBaseUserTable
 from app.database.session import Base
 
 # 用户-角色多对多关联表
@@ -19,18 +20,23 @@ role_permission = Table(
     Column("permission_id", Integer, ForeignKey("permissions.id"))
 )
 
-class User(Base):
+class User(SQLAlchemyBaseUserTable[int], Base):
     __tablename__ = "users"
+    
+    # FastAPI-Users必需字段
     id = Column(Integer, primary_key=True, autoincrement=True)
     email = Column(String(255), unique=True, nullable=False, index=True)
+    hashed_password = Column(String(255), nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    is_superuser = Column(Boolean, default=False, nullable=False)
+    is_verified = Column(Boolean, default=False, nullable=False)
+    
+    # 自定义字段
     username = Column(String(255), unique=True, index=True, nullable=False)
     full_name = Column(String(100), nullable=True)
-    hashed_password = Column(String(255), nullable=False)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
-    is_verified = Column(Boolean, default=False, nullable=False)
     created_at = Column(sa.DateTime, nullable=False, server_default=sa.func.now())
     updated_at = Column(sa.DateTime, nullable=False, server_default=sa.func.now(), onupdate=sa.func.now())
+    
     # 用户与角色多对多
     roles = relationship("Role", secondary=user_role, back_populates="users")
 

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, EmailStr
 from typing import Optional
 from datetime import datetime
 
@@ -15,6 +15,11 @@ class TokenPayload(BaseModel):
         extra = "allow"  # 允许额外字段
 
 class LoginData(BaseModel):
+    username: str
+    password: str
+
+# FastAPI-Users兼容的认证模型
+class UserLogin(BaseModel):
     username: str
     password: str
 

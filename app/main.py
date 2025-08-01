@@ -6,6 +6,7 @@ from fastapi_users import FastAPIUsers
 from fastapi_users.authentication import JWTStrategy, CookieTransport, BearerTransport, AuthenticationBackend
 from app.core.config import get_settings
 from app.schemas.user import User as UserRead, UserCreate
+from app.schemas.auth import UserLogin
 
 settings = get_settings()
 
@@ -33,11 +34,15 @@ fastapi_users = FastAPIUsers[User, int](
 
 from app.api.v1.api import api_router
 
-app = FastAPI()
+app = FastAPI(
+    title=settings.PROJECT_NAME,
+    version=settings.VERSION,
+    description="现代化的配置管理数据库(CMDB)系统，提供完整的资产管理、用户认证和企业级菜单权限控制功能。",
+)
 
-# 注册认证路由
+# 注册认证路由 - 使用自定义认证模型
 app.include_router(
-    fastapi_users.get_auth_router(auth_backend_bearer),
+    fastapi_users.get_auth_router(auth_backend_bearer, requires_verification=False),
     prefix="/auth",
     tags=["auth"],
 )
@@ -57,17 +62,25 @@ app.include_router(
 # 注册自定义 /users 路由（带权限控制）
 app.include_router(api_router, prefix="/api/v1")
 
+# 配置 CORS 中间件
 if settings.BACKEND_CORS_ORIGINS:
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=[str(origin) for origin in settings.BACKEND_CORS_ORIGINS],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=settings.BACKEND_CORS_ORIGINS,
+        allow_credentials=settings.CORS_ALLOW_CREDENTIALS,
+        allow_methods=settings.CORS_ALLOW_METHODS,
+        allow_headers=settings.CORS_ALLOW_HEADERS,
+        expose_headers=settings.CORS_EXPOSE_HEADERS,
+        max_age=settings.CORS_MAX_AGE,
     )
 
 @app.get("/health")
 async def health_check():
-    return {"status": "ok", "message": "CMDB API is running smoothly."}
+    return {
+        "status": "ok", 
+        "message": "CMDB API is running smoothly.",
+        "version": settings.VERSION,
+        "environment": settings.ENVIRONMENT
+    }
 
 

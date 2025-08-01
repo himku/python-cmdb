@@ -1,6 +1,6 @@
 # 导入所需模块
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import Optional, List, Union
 from functools import lru_cache
 
 ## 应用程序配置
@@ -29,8 +29,36 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"         # JWT 使用的算法
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30  # Token 过期时间（分钟）
     
-    # CORS 配置
-    BACKEND_CORS_ORIGINS: list[str] = ["*"]  # 允许的来源列表，"*" 表示全部允许
+    # CORS 配置 - 跨域资源共享设置
+    BACKEND_CORS_ORIGINS: List[str] = [
+        "http://localhost:3000",     # React 开发服务器
+        "http://localhost:8080",     # Vue 开发服务器
+        "http://localhost:5173",     # Vite 开发服务器
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:8080", 
+        "http://127.0.0.1:5173",
+        "http://localhost:9527",     # Vue Admin Template
+        "http://127.0.0.1:9527",
+    ]
+    
+    # CORS 高级配置
+    CORS_ALLOW_CREDENTIALS: bool = True           # 是否允许携带认证信息
+    CORS_ALLOW_METHODS: List[str] = [             # 允许的HTTP方法
+        "GET", "POST", "PUT", "DELETE", 
+        "OPTIONS", "HEAD", "PATCH"
+    ]
+    CORS_ALLOW_HEADERS: List[str] = [             # 允许的请求头
+        "Accept", "Accept-Language", "Content-Language", 
+        "Content-Type", "Authorization", "X-Requested-With",
+        "X-CSRF-Token", "X-Request-ID"
+    ]
+    CORS_EXPOSE_HEADERS: List[str] = [            # 暴露给客户端的响应头
+        "X-Request-ID", "X-Response-Time"
+    ]
+    CORS_MAX_AGE: int = 86400                     # 预检请求缓存时间（秒）
+    
+    # 环境模式
+    ENVIRONMENT: str = "development"              # 环境模式: development, production, testing
     
     class Config:
         case_sensitive = True   # 设置区分大小写
@@ -58,11 +86,19 @@ class Settings(BaseSettings):
                 self.REDIS_URL = (
                     f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/{self.REDIS_DB}"
                 )
+        
+        # 根据环境调整CORS设置
+        if self.ENVIRONMENT == "production":
+            # 生产环境使用更严格的CORS设置
+            if "*" in self.BACKEND_CORS_ORIGINS:
+                self.BACKEND_CORS_ORIGINS = [
+                    "https://yourdomain.com",    # 替换为实际的生产域名
+                    "https://admin.yourdomain.com"
+                ]
 
 @lru_cache()
-def get_settings() -> Settings:
+def get_settings():
     """
-    创建并返回 Settings 的缓存实例。
-    使用 lru_cache 防止多次读取环境变量。
+    使用 LRU 缓存获取设置实例，确保单例模式。
     """
     return Settings()
