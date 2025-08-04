@@ -1,69 +1,96 @@
-from typing import List
-from fastapi import Request, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
-from jose import jwt, JWTError
+import base64
+import binascii
+from typing import Optional, Tuple
+from starlette.authentication import AuthenticationBackend, AuthenticationError, AuthCredentials, SimpleUser
+from starlette.requests import Request
+from fastapi import HTTPException, status
+from jose import JWTError, jwt
 from app.core.config import get_settings
-from app.core.security import verify_token
+from app.database.session import get_db
+from app.users.models import User
+from sqlalchemy import select
 
 settings = get_settings()
-security = HTTPBearer()
 
-# 不需要token认证的公开接口
-PUBLIC_PATHS: List[str] = [
-    "/health",
-    "/docs",
-    "/redoc",
-    "/openapi.json",
-    "/auth/login",
-    "/auth/logout", 
-    "/auth/register",
-    "/auth/jwt-cookie/login",
-    "/auth/jwt-cookie/logout",
-]
-
-def is_public_path(path: str) -> bool:
-    """检查路径是否为公开接口"""
-    for public_path in PUBLIC_PATHS:
-        if path.startswith(public_path):
-            return True
-    return False
-
-async def verify_token_middleware(request: Request, call_next):
-    """Token验证中间件"""
+class CasbinAuthBackend(AuthenticationBackend):
+    """
+    与 Casbin 集成的认证后端
+    从 JWT token 中提取用户信息，为 Casbin 提供用户身份
+    """
     
-    # 检查是否为公开接口
-    if is_public_path(request.url.path):
-        response = await call_next(request)
-        return response
+    async def authenticate(self, request: Request) -> Optional[Tuple[AuthCredentials, SimpleUser]]:
+        # 1. 尝试从 Authorization header 获取 Bearer token
+        authorization = request.headers.get("Authorization")
+        if authorization and authorization.startswith("Bearer "):
+            token = authorization.split(" ")[1]
+            user_info = await self._verify_jwt_token(token)
+            if user_info:
+                return AuthCredentials(["authenticated"]), SimpleUser(user_info["username"])
+        
+        # 2. 尝试从 Cookie 获取 token
+        cookie_token = request.cookies.get("cmdb_auth")
+        if cookie_token:
+            user_info = await self._verify_jwt_token(cookie_token)
+            if user_info:
+                return AuthCredentials(["authenticated"]), SimpleUser(user_info["username"])
+        
+        # 3. 为匿名用户提供默认身份，让 Casbin 处理权限检查
+        return AuthCredentials(["anonymous"]), SimpleUser("anonymous")
     
-    # 获取Authorization头
-    authorization: str = request.headers.get("Authorization")
-    if not authorization or not authorization.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Missing or invalid authorization header",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
-    
-    # 提取token
-    token = authorization.split(" ")[1]
-    
-    try:
-        # 验证token
-        payload = verify_token(token)
-        if payload is None:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid token",
-                headers={"WWW-Authenticate": "Bearer"},
+    async def _verify_jwt_token(self, token: str) -> Optional[dict]:
+        """验证 JWT token 并返回用户信息"""
+        try:
+            payload = jwt.decode(
+                token, 
+                settings.SECRET_KEY, 
+                algorithms=["HS256"],
+                options={"verify_aud": False}  # 跳过audience验证
             )
-    except JWTError:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Token validation failed",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+            user_id: int = payload.get("sub")
+            if user_id is None:
+                return None
+            
+            # 从数据库获取用户信息
+            async for db in get_db():
+                stmt = select(User).filter(User.id == user_id)
+                result = await db.execute(stmt)
+                user = result.scalar_one_or_none()
+                
+                if user and user.is_active:
+                    return {
+                        "user_id": user.id,
+                        "username": user.username,
+                        "email": user.email,
+                        "is_superuser": user.is_superuser
+                    }
+                break
+            
+            return None
+            
+        except JWTError:
+            return None
+
+class BasicAuthBackend(AuthenticationBackend):
+    """
+    基础认证后端（用于测试）
+    支持 username:password 格式的 Basic Auth
+    """
     
-    # 继续处理请求
-    response = await call_next(request)
-    return response 
+    async def authenticate(self, request: Request) -> Optional[Tuple[AuthCredentials, SimpleUser]]:
+        if "Authorization" not in request.headers:
+            return AuthCredentials(["anonymous"]), SimpleUser("anonymous")
+
+        auth = request.headers["Authorization"]
+        try:
+            scheme, credentials = auth.split()
+            if scheme.lower() != "basic":
+                return AuthCredentials(["anonymous"]), SimpleUser("anonymous")
+            decoded = base64.b64decode(credentials).decode("ascii")
+        except (ValueError, UnicodeDecodeError, binascii.Error):
+            raise AuthenticationError("Invalid basic auth credentials")
+
+        username, _, password = decoded.partition(":")
+        
+        # 这里可以添加实际的用户验证逻辑
+        # 为了演示，我们接受任何用户名和密码
+        return AuthCredentials(["authenticated"]), SimpleUser(username) 

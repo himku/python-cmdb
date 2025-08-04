@@ -2,7 +2,6 @@ from pydantic import BaseModel, EmailStr
 from typing import Optional, List
 from datetime import datetime
 
-from app.schemas.role import Role  # Add this import if Role is defined in app/schemas/role.py
 
 class UserBase(BaseModel):
     email: EmailStr
@@ -39,6 +38,5 @@ class UserInDB(UserInDBBase):
         from_attributes = True
         
 class UserWithRoles(User):
-    roles: List[Role] = []
-class UserWithRoles(User):
-    roles: List["Role"] = []
+    """用户信息包含Casbin角色列表"""
+    roles: List[str] = []  # Casbin角色名称列表

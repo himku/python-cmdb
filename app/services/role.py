@@ -1,175 +1,145 @@
+"""
+角色服务 - 基于Casbin的角色管理
+完全使用casbin_rule表管理角色和权限
+"""
+
+from typing import List, Dict, Any
+from app.services.casbin_service import CasbinService
+from app.schemas.role import CasbinRole, CasbinPolicy
+from app.users.models import User
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
-from sqlalchemy.orm import selectinload
-from typing import List, Optional
-from app.users.models import Role, Permission, User, user_role, role_permission
-from app.schemas.role import RoleCreate, RoleUpdate
+from sqlalchemy import select
 
 class RoleService:
+    """基于Casbin的角色管理服务"""
+    
     def __init__(self, db: AsyncSession):
         self.db = db
     
-    async def get_roles(self, skip: int = 0, limit: int = 100) -> List[Role]:
-        """获取角色列表"""
-        stmt = select(Role).options(selectinload(Role.permissions)).offset(skip).limit(limit)
-        result = await self.db.execute(stmt)
-        return result.scalars().all()
-    
-    async def get_role(self, role_id: int) -> Optional[Role]:
-        """根据ID获取角色"""
-        stmt = select(Role).options(selectinload(Role.permissions), selectinload(Role.users)).filter(Role.id == role_id)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
-    
-    async def get_role_by_name(self, name: str) -> Optional[Role]:
-        """根据名称获取角色"""
-        stmt = select(Role).filter(Role.name == name)
-        result = await self.db.execute(stmt)
-        return result.scalar_one_or_none()
-    
-    async def create_role(self, role: RoleCreate) -> Role:
-        """创建新角色"""
-        db_role = Role(
-            name=role.name,
-            description=role.description
-        )
-        self.db.add(db_role)
-        await self.db.commit()
-        await self.db.refresh(db_role)
-        return db_role
-    
-    async def update_role(self, role_id: int, role_update: RoleUpdate) -> Optional[Role]:
-        """更新角色信息"""
-        db_role = await self.get_role(role_id)
-        if not db_role:
-            return None
+    async def get_all_roles(self) -> List[CasbinRole]:
+        """获取所有Casbin角色及其用户"""
+        # 从Casbin获取所有角色
+        casbin_roles = CasbinService.get_all_roles()
         
-        # 更新基本信息
-        if role_update.name is not None:
-            db_role.name = role_update.name
-        if role_update.description is not None:
-            db_role.description = role_update.description
-        
-        # 更新权限关联
-        if role_update.permission_ids is not None:
-            # 清除现有权限
-            stmt = delete(role_permission).where(role_permission.c.role_id == role_id)
-            await self.db.execute(stmt)
+        roles = []
+        for role_name in casbin_roles:
+            # 获取拥有此角色的用户
+            users = CasbinService.get_users_for_role(role_name)
             
-            # 添加新权限
-            if role_update.permission_ids:
-                for permission_id in role_update.permission_ids:
-                    stmt = role_permission.insert().values(role_id=role_id, permission_id=permission_id)
-                    await self.db.execute(stmt)
+            # 创建角色描述
+            description = self._get_role_description(role_name)
+            
+            role = CasbinRole(
+                name=role_name,
+                description=description,
+                users=users
+            )
+            roles.append(role)
         
-        await self.db.commit()
-        await self.db.refresh(db_role)
-        return db_role
+        return roles
     
-    async def delete_role(self, role_id: int) -> bool:
-        """删除角色"""
-        db_role = await self.get_role(role_id)
-        if not db_role:
-            return False
+    async def get_role_by_name(self, role_name: str) -> CasbinRole:
+        """根据名称获取角色"""
+        users = CasbinService.get_users_for_role(role_name)
+        description = self._get_role_description(role_name)
         
-        # 先清除角色的所有关联
-        # 清除用户-角色关联
-        stmt = delete(user_role).where(user_role.c.role_id == role_id)
-        await self.db.execute(stmt)
-        
-        # 清除角色-权限关联
-        stmt = delete(role_permission).where(role_permission.c.role_id == role_id)
-        await self.db.execute(stmt)
-        
-        # 删除角色
-        await self.db.delete(db_role)
-        await self.db.commit()
-        return True
-    
-    async def assign_permission_to_role(self, role_id: int, permission_id: int) -> bool:
-        """为角色分配权限"""
-        # 检查角色和权限是否存在
-        role = await self.get_role(role_id)
-        if not role:
-            return False
-        
-        stmt = select(Permission).filter(Permission.id == permission_id)
-        result = await self.db.execute(stmt)
-        permission = result.scalar_one_or_none()
-        if not permission:
-            return False
-        
-        # 检查是否已经存在关联
-        stmt = select(role_permission).where(
-            (role_permission.c.role_id == role_id) & 
-            (role_permission.c.permission_id == permission_id)
+        return CasbinRole(
+            name=role_name,
+            description=description,
+            users=users
         )
-        result = await self.db.execute(stmt)
-        if result.first():
-            return True  # 已存在，返回成功
+    
+    async def create_role(self, role_name: str, description: str = None) -> CasbinRole:
+        """创建新角色（通过添加策略）"""
+        # 在Casbin中，角色通过策略定义，这里我们可以添加一个默认策略
+        # 例如：给角色分配基本权限
+        success = CasbinService.add_policy(role_name, "/basic", "GET")
         
-        # 创建关联
-        stmt = role_permission.insert().values(role_id=role_id, permission_id=permission_id)
-        await self.db.execute(stmt)
-        await self.db.commit()
-        return True
+        if success:
+            return CasbinRole(
+                name=role_name,
+                description=description or f"角色: {role_name}",
+                users=[]
+            )
+        else:
+            raise ValueError(f"无法创建角色: {role_name}")
     
-    async def remove_permission_from_role(self, role_id: int, permission_id: int) -> bool:
-        """从角色中移除权限"""
-        stmt = delete(role_permission).where(
-            (role_permission.c.role_id == role_id) & 
-            (role_permission.c.permission_id == permission_id)
-        )
-        result = await self.db.execute(stmt)
-        await self.db.commit()
-        return result.rowcount > 0
-    
-    async def assign_role_to_user(self, user_id: int, role_id: int) -> bool:
+    async def assign_role_to_user(self, username: str, role_name: str) -> bool:
         """为用户分配角色"""
-        # 检查用户和角色是否存在
-        stmt = select(User).filter(User.id == user_id)
-        result = await self.db.execute(stmt)
-        user = result.scalar_one_or_none()
-        if not user:
-            return False
+        success = CasbinService.add_role_for_user(username, role_name)
         
-        role = await self.get_role(role_id)
-        if not role:
-            return False
+        # 如果是admin角色，同时更新数据库中的is_superuser字段
+        if success and role_name == "admin":
+            await self._sync_superuser_status(username, True)
         
-        # 检查是否已经存在关联
-        stmt = select(user_role).where(
-            (user_role.c.user_id == user_id) & 
-            (user_role.c.role_id == role_id)
-        )
-        result = await self.db.execute(stmt)
-        if result.first():
-            return True  # 已存在，返回成功
-        
-        # 创建关联
-        stmt = user_role.insert().values(user_id=user_id, role_id=role_id)
-        await self.db.execute(stmt)
-        await self.db.commit()
-        return True
+        return success
     
-    async def remove_role_from_user(self, user_id: int, role_id: int) -> bool:
-        """从用户中移除角色"""
-        stmt = delete(user_role).where(
-            (user_role.c.user_id == user_id) & 
-            (user_role.c.role_id == role_id)
-        )
-        result = await self.db.execute(stmt)
-        await self.db.commit()
-        return result.rowcount > 0
+    async def remove_role_from_user(self, username: str, role_name: str) -> bool:
+        """从用户移除角色"""
+        success = CasbinService.delete_role_for_user(username, role_name)
+        
+        # 如果移除admin角色，检查是否需要更新is_superuser
+        if success and role_name == "admin":
+            # 检查用户是否还有其他admin权限
+            remaining_roles = CasbinService.get_roles_for_user(username)
+            if "admin" not in remaining_roles:
+                await self._sync_superuser_status(username, False)
+        
+        return success
     
-    async def get_user_roles(self, user_id: int) -> List[Role]:
+    async def get_user_roles(self, username: str) -> List[str]:
         """获取用户的所有角色"""
-        stmt = select(Role).join(user_role).filter(user_role.c.user_id == user_id)
-        result = await self.db.execute(stmt)
-        return result.scalars().all()
+        return CasbinService.get_roles_for_user(username)
     
-    async def get_role_permissions(self, role_id: int) -> List[Permission]:
-        """获取角色的所有权限"""
-        stmt = select(Permission).join(role_permission).filter(role_permission.c.role_id == role_id)
+    async def get_role_policies(self, role_name: str) -> List[CasbinPolicy]:
+        """获取角色的所有策略"""
+        all_policies = CasbinService.get_all_policies()
+        role_policies = []
+        
+        for policy in all_policies:
+            if len(policy) >= 3 and policy[0] == role_name:
+                role_policies.append(CasbinPolicy(
+                    role=policy[0],
+                    resource=policy[1],
+                    action=policy[2]
+                ))
+        
+        return role_policies
+    
+    def _get_role_description(self, role_name: str) -> str:
+        """获取角色描述"""
+        descriptions = {
+            "admin": "系统管理员，拥有所有权限",
+            "user_manager": "用户管理员，可以管理用户",
+            "viewer": "查看者，只能查看信息",
+            "authenticated": "已认证用户，可访问基本功能"
+        }
+        return descriptions.get(role_name, f"角色: {role_name}")
+    
+    async def _sync_superuser_status(self, username: str, is_superuser: bool):
+        """同步用户的超级用户状态到数据库"""
+        try:
+            stmt = select(User).filter(User.username == username)
+            result = await self.db.execute(stmt)
+            user = result.scalar_one_or_none()
+            
+            if user:
+                user.is_superuser = is_superuser
+                await self.db.commit()
+        except Exception as e:
+            print(f"同步超级用户状态失败: {e}")
+            await self.db.rollback()
+    
+    async def sync_superusers_to_casbin(self) -> int:
+        """同步数据库中的超级用户到Casbin admin角色"""
+        stmt = select(User).filter(User.is_superuser == True)
         result = await self.db.execute(stmt)
-        return result.scalars().all() 
+        superusers = result.scalars().all()
+        
+        count = 0
+        for user in superusers:
+            success = CasbinService.add_role_for_user(user.username, "admin")
+            if success:
+                count += 1
+        
+        return count 

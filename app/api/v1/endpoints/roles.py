@@ -1,293 +1,168 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from typing import List
+from typing import List, Dict, Any
 from app.api.deps import get_db, get_current_active_user
 from app.services.role import RoleService
-from app.services.permission import PermissionService
-from app.schemas.role import Role, RoleCreate, RoleUpdate, Permission, PermissionCreate
+from app.services.casbin_service import CasbinService
+from app.schemas.role import CasbinRole, CasbinRoleList, RoleAssignRequest
 from app.schemas.user import User
-from app.users.models import User as UserModel, Role as RoleModel, user_role
 
 router = APIRouter()
 
-async def check_admin_permission(user_id: int, db: AsyncSession) -> bool:
+async def check_admin_permission(current_user: User) -> bool:
     """检查用户是否有admin权限"""
-    # 异步查询用户角色
-    stmt = select(RoleModel.name).join(user_role).filter(user_role.c.user_id == user_id)
-    result = await db.execute(stmt)
-    user_roles = result.scalars().all()
-    
-    # 检查用户是否有admin角色
-    return any(role.lower() == 'admin' for role in user_roles)
+    return current_user.is_superuser
 
-async def require_admin_role(
-    current_user: User = Depends(get_current_active_user),
-    db: AsyncSession = Depends(get_db)
-) -> User:
-    """确保当前用户具有admin角色"""
-    if not current_user.is_superuser:
-        has_admin_role = await check_admin_permission(current_user.id, db)
-        if not has_admin_role:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="只有admin角色可以执行此操作"
-            )
-    return current_user
+# ==================== 角色管理 API (仅admin) ====================
 
-# ==================== 角色管理 API ====================
-
-@router.get("/roles/", response_model=List[Role])
+@router.get("/roles/", response_model=CasbinRoleList, summary="List Roles", description="获取所有角色列表 - 仅admin")
 async def list_roles(
     skip: int = 0,
     limit: int = 100,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """获取所有角色列表 - 仅admin"""
+    """获取所有角色列表"""
+    if not await check_admin_permission(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
+        )
+    
     role_service = RoleService(db)
-    return await role_service.get_roles(skip=skip, limit=limit)
+    roles = await role_service.get_all_roles()
+    
+    # 应用分页
+    total = len(roles)
+    paginated_roles = roles[skip:skip + limit]
+    
+    return CasbinRoleList(roles=paginated_roles, count=total)
 
-@router.post("/roles/", response_model=Role)
+@router.post("/roles/", response_model=CasbinRole, summary="Create Role", description="创建新角色 - 仅admin")
 async def create_role(
-    role: RoleCreate,
+    role_name: str,
+    description: str = None,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """创建新角色 - 仅admin"""
-    role_service = RoleService(db)
-    
-    # 检查角色名是否已存在
-    existing_role = await role_service.get_role_by_name(role.name)
-    if existing_role:
+    """创建新角色"""
+    if not await check_admin_permission(current_user):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="角色名已存在"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
         )
     
-    return await role_service.create_role(role)
+    try:
+        role_service = RoleService(db)
+        role = await role_service.create_role(role_name, description)
+        return role
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
 
-@router.get("/roles/{role_id}", response_model=Role)
+@router.get("/roles/{role_name}", response_model=CasbinRole, summary="Get Role", description="获取角色详情 - 仅admin")
 async def get_role(
-    role_id: int,
+    role_name: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """获取角色详情 - 仅admin"""
+    """获取角色详情"""
+    if not await check_admin_permission(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
+        )
+    
     role_service = RoleService(db)
-    role = await role_service.get_role(role_id)
-    if not role:
+    try:
+        role = await role_service.get_role_by_name(role_name)
+        return role
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="角色不存在"
         )
-    return role
 
-@router.put("/roles/{role_id}", response_model=Role)
-async def update_role(
-    role_id: int,
-    role_update: RoleUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """更新角色信息 - 仅admin"""
-    role_service = RoleService(db)
-    
-    # 防止修改admin角色
-    existing_role = await role_service.get_role(role_id)
-    if not existing_role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-    
-    if existing_role.name.lower() == 'admin' and role_update.name and role_update.name.lower() != 'admin':
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不能修改admin角色的名称"
-        )
-    
-    updated_role = await role_service.update_role(role_id, role_update)
-    if not updated_role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-    return updated_role
+# ==================== 用户角色分配 API (仅admin) ====================
 
-@router.delete("/roles/{role_id}")
-async def delete_role(
-    role_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """删除角色 - 仅admin"""
-    role_service = RoleService(db)
-    
-    # 防止删除admin角色
-    existing_role = await role_service.get_role(role_id)
-    if not existing_role:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-    
-    if existing_role.name.lower() == 'admin':
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="不能删除admin角色"
-        )
-    
-    success = await role_service.delete_role(role_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="角色不存在"
-        )
-    return {"message": "角色删除成功"}
-
-# ==================== 权限管理 API ====================
-
-@router.get("/permissions/", response_model=List[Permission])
-async def list_permissions(
-    skip: int = 0,
-    limit: int = 100,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """获取所有权限列表 - 仅admin"""
-    permission_service = PermissionService(db)
-    return await permission_service.get_permissions(skip=skip, limit=limit)
-
-@router.post("/permissions/", response_model=Permission)
-async def create_permission(
-    permission: PermissionCreate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """创建新权限 - 仅admin"""
-    permission_service = PermissionService(db)
-    
-    # 检查权限代码是否已存在
-    existing_permission = await permission_service.get_permission_by_code(permission.code)
-    if existing_permission:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="权限代码已存在"
-        )
-    
-    return await permission_service.create_permission(permission)
-
-@router.get("/permissions/{permission_id}", response_model=Permission)
-async def get_permission(
-    permission_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """获取权限详情 - 仅admin"""
-    permission_service = PermissionService(db)
-    permission = await permission_service.get_permission(permission_id)
-    if not permission:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="权限不存在"
-        )
-    return permission
-
-@router.delete("/permissions/{permission_id}")
-async def delete_permission(
-    permission_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """删除权限 - 仅admin"""
-    permission_service = PermissionService(db)
-    success = await permission_service.delete_permission(permission_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="权限不存在"
-        )
-    return {"message": "权限删除成功"}
-
-# ==================== 角色权限关联 API ====================
-
-@router.post("/roles/{role_id}/permissions/{permission_id}")
-async def assign_permission_to_role(
-    role_id: int,
-    permission_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """为角色分配权限 - 仅admin"""
-    role_service = RoleService(db)
-    success = await role_service.assign_permission_to_role(role_id, permission_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="分配权限失败，请检查角色和权限是否存在"
-        )
-    return {"message": "权限分配成功"}
-
-@router.delete("/roles/{role_id}/permissions/{permission_id}")
-async def remove_permission_from_role(
-    role_id: int,
-    permission_id: int,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
-):
-    """从角色中移除权限 - 仅admin"""
-    role_service = RoleService(db)
-    success = await role_service.remove_permission_from_role(role_id, permission_id)
-    if not success:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="移除权限失败"
-        )
-    return {"message": "权限移除成功"}
-
-# ==================== 用户角色分配 API ====================
-
-@router.post("/users/{user_id}/roles/{role_id}")
+@router.post("/users/{username}/roles/", summary="Assign Role To User", description="给用户分配角色 - 仅admin")
 async def assign_role_to_user(
-    user_id: int,
-    role_id: int,
+    username: str,
+    role_assign: RoleAssignRequest,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """为用户分配角色 - 仅admin"""
-    role_service = RoleService(db)
-    success = await role_service.assign_role_to_user(user_id, role_id)
-    if not success:
+    """给用户分配角色"""
+    if not await check_admin_permission(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
+        )
+    
+    # 确保用户名一致
+    if username != role_assign.username:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="分配角色失败，请检查用户和角色是否存在"
+            detail="用户名不匹配"
         )
-    return {"message": "角色分配成功"}
+    
+    role_service = RoleService(db)
+    success = await role_service.assign_role_to_user(username, role_assign.role)
+    
+    if success:
+        return {"message": f"成功为用户 {username} 分配角色 {role_assign.role}"}
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="角色分配失败"
+        )
 
-@router.delete("/users/{user_id}/roles/{role_id}")
+@router.delete("/users/{username}/roles/{role_name}", summary="Remove Role From User", description="从用户中移除角色 - 仅admin")
 async def remove_role_from_user(
-    user_id: int,
-    role_id: int,
+    username: str,
+    role_name: str,
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(require_admin_role)
+    current_user: User = Depends(get_current_active_user)
 ):
-    """从用户中移除角色 - 仅admin"""
+    """从用户中移除角色"""
+    if not await check_admin_permission(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
+        )
+    
     role_service = RoleService(db)
+    success = await role_service.remove_role_from_user(username, role_name)
     
-    # 防止移除admin用户的admin角色
-    if current_user.id == user_id:
-        role = await role_service.get_role(role_id)
-        if role and role.name.lower() == 'admin':
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="不能移除自己的admin角色"
-            )
-    
-    success = await role_service.remove_role_from_user(user_id, role_id)
-    if not success:
+    if success:
+        return {"message": f"成功从用户 {username} 移除角色 {role_name}"}
+    else:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="移除角色失败"
+            detail="角色移除失败"
         )
-    return {"message": "角色移除成功"} 
+
+@router.get("/users/{username}/roles/", summary="Get User Roles", description="获取用户的所有角色 - 仅admin")
+async def get_user_roles(
+    username: str,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """获取用户的所有角色"""
+    if not await check_admin_permission(current_user):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="需要管理员权限"
+        )
+    
+    role_service = RoleService(db)
+    roles = await role_service.get_user_roles(username)
+    
+    return {
+        "username": username,
+        "roles": roles,
+        "count": len(roles)
+    } 

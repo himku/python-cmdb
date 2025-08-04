@@ -1,0 +1,16 @@
+p, admin, /api/v1/admin/*, *
+p, admin, /api/v1/users/*, *
+p, user_manager, /api/v1/users/*, GET
+p, user_manager, /api/v1/users/*, POST
+p, user_manager, /api/v1/users/*, PUT
+p, viewer, /api/v1/users/*, GET
+
+p, anonymous, /docs, GET
+p, anonymous, /redoc, GET
+p, anonymous, /openapi.json, GET
+p, anonymous, /health, GET
+p, anonymous, /auth/*, *
+
+g, alice, admin
+g, bob, user_manager
+g, charlie, viewer 

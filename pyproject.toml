@@ -21,5 +21,8 @@ dependencies = [
     "passlib[argon2,bcrypt]",
     "python-multipart",
     "setuptools",
-    "aiomysql"
+    "aiomysql",
+    "fastapi-authz",
+    "casbin",
+    "casbin-sqlalchemy-adapter>=1.4.0",
 ]
