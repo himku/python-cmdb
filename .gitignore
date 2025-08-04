@@ -20,3 +20,4 @@ wheels/
 .env.*
 !.env.example
 ./logs/*
+logs/*

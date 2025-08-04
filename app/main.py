@@ -1,6 +1,7 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 from app.users.models import User
 from app.users.manager import get_user_manager
 from fastapi_users import FastAPIUsers
@@ -11,8 +12,39 @@ from app.schemas.auth import UserLogin
 from app.services.casbin_service import CasbinService
 from fastapi_authz import CasbinMiddleware
 from app.api.middleware import CasbinAuthBackend
+import time
+
+# 初始化日志系统
+from app.core.logging import setup_logging, set_request_id, log_request, log_api_call, get_logger
+setup_logging()
+logger = get_logger("main")
 
 settings = get_settings()
+
+class LoggingMiddleware(BaseHTTPMiddleware):
+    """请求日志中间件"""
+    
+    async def dispatch(self, request: Request, call_next):
+        # 为每个请求设置唯一ID
+        request_id = set_request_id()
+        
+        # 记录请求开始
+        start_time = time.time()
+        method = request.method
+        path = str(request.url.path)
+        
+        logger.info(f"🚀 Start: {method} {path} [req:{request_id}]")
+        
+        # 处理请求
+        response = await call_next(request)
+        
+        # 记录请求完成
+        duration = time.time() - start_time
+        status_code = response.status_code
+        
+        log_request(method, path, status_code, duration)
+        
+        return response
 
 def get_jwt_strategy() -> JWTStrategy:
     return JWTStrategy(secret=settings.SECRET_KEY, lifetime_seconds=3600)
@@ -61,8 +93,17 @@ if settings.BACKEND_CORS_ORIGINS:
 enforcer = CasbinService.get_enforcer()
 app.add_middleware(CasbinMiddleware, enforcer=enforcer)
 
-# 3. 最后添加认证中间件（最先执行）
+# 3. 添加认证中间件（倒数第三执行）
 app.add_middleware(AuthenticationMiddleware, backend=CasbinAuthBackend())
+
+# 4. 最后添加日志中间件（最先执行 - 记录所有请求）
+app.add_middleware(LoggingMiddleware)
+
+logger.info("🚀 CMDB应用启动完成")
+logger.info(f"🔧 环境: {settings.ENVIRONMENT}")
+logger.info(f"📝 版本: {settings.VERSION}")
+logger.info(f"🌐 CORS源: {settings.BACKEND_CORS_ORIGINS}")
+logger.info("⚡ Casbin权限系统已启用")
 
 # 注册认证路由 - 使用自定义认证模型
 app.include_router(
