@@ -51,7 +51,7 @@ class CasbinAuthBackend(AuthenticationBackend):
                 logger.warning("🍪 Cookie token验证失败")
         
         # 3. 为匿名用户提供默认身份，让 Casbin 处理权限检查
-        logger.debug("👤 返回匿名用户身份")
+        logger.debug("返回匿名用户身份")
         log_auth("anonymous", "使用匿名身份", True)
         return AuthCredentials(["anonymous"]), SimpleUser("anonymous")
     
@@ -67,10 +67,10 @@ class CasbinAuthBackend(AuthenticationBackend):
             )
             user_id: int = payload.get("sub")
             if user_id is None:
-                logger.warning("🚫 JWT payload中缺少用户ID")
+                logger.warning("JWT payload中缺少用户ID")
                 return None
             
-            logger.debug(f"✅ JWT解码成功，用户ID: {user_id}")
+            logger.debug(f"JWT解码成功，用户ID: {user_id}")
             
             # 从数据库获取用户信息
             async for db in get_db():
@@ -88,15 +88,15 @@ class CasbinAuthBackend(AuthenticationBackend):
                     }
                 else:
                     if user:
-                        logger.warning(f"🚫 用户未激活: {user.username}")
+                        logger.warning(f"用户未激活: {user.username}")
                     else:
-                        logger.warning(f"🚫 用户不存在: ID {user_id}")
+                        logger.warning(f"用户不存在: ID {user_id}")
                 break
             
             return None
             
         except JWTError as e:
-            logger.warning(f"🚫 JWT验证失败: {type(e).__name__}: {str(e)}")
+            logger.warning(f"JWT验证失败: {type(e).__name__}: {str(e)}")
             log_error(e, "JWT验证")
             return None
         except Exception as e:
@@ -119,11 +119,11 @@ class BasicAuthBackend(AuthenticationBackend):
         try:
             scheme, credentials = auth.split()
             if scheme.lower() != "basic":
-                logger.debug(f"🔍 非Basic认证方案: {scheme}")
+                logger.debug(f"非Basic认证方案: {scheme}")
                 return AuthCredentials(["anonymous"]), SimpleUser("anonymous")
             decoded = base64.b64decode(credentials).decode("ascii")
         except (ValueError, UnicodeDecodeError, binascii.Error) as e:
-            logger.error(f"💥 Basic Auth凭据解码失败: {e}")
+            logger.error(f"Basic Auth凭据解码失败: {e}")
             raise AuthenticationError("Invalid basic auth credentials")
 
         username, _, password = decoded.partition(":")

@@ -34,10 +34,16 @@ class Settings(BaseSettings):
         "http://localhost:3000",     # React 开发服务器
         "http://localhost:8080",     # Vue 开发服务器
         "http://localhost:5173",     # Vite 开发服务器
+        "http://localhost:4200",     # Angular 开发服务器
+        "http://localhost:8000",     # Django/其他框架
+        "http://localhost:9000",     # 其他常用端口
+        "http://localhost:9527",     # Vue Admin Template
         "http://127.0.0.1:3000",
         "http://127.0.0.1:8080", 
         "http://127.0.0.1:5173",
-        "http://localhost:9527",     # Vue Admin Template
+        "http://127.0.0.1:4200",
+        "http://127.0.0.1:8000",
+        "http://127.0.0.1:9000",
         "http://127.0.0.1:9527",
     ]
     
@@ -48,12 +54,23 @@ class Settings(BaseSettings):
         "OPTIONS", "HEAD", "PATCH"
     ]
     CORS_ALLOW_HEADERS: List[str] = [             # 允许的请求头
-        "Accept", "Accept-Language", "Content-Language", 
-        "Content-Type", "Authorization", "X-Requested-With",
-        "X-CSRF-Token", "X-Request-ID"
+        "Accept", 
+        "Accept-Language", 
+        "Content-Language", 
+        "Content-Type", 
+        "Authorization", 
+        "X-Requested-With",
+        "X-CSRF-Token", 
+        "X-Request-ID",
+        "Origin",
+        "Access-Control-Request-Method",
+        "Access-Control-Request-Headers"
     ]
     CORS_EXPOSE_HEADERS: List[str] = [            # 暴露给客户端的响应头
-        "X-Request-ID", "X-Response-Time"
+        "X-Request-ID", 
+        "X-Response-Time",
+        "Content-Length",
+        "Content-Type"
     ]
     CORS_MAX_AGE: int = 86400                     # 预检请求缓存时间（秒）
     
@@ -95,6 +112,12 @@ class Settings(BaseSettings):
                     "https://yourdomain.com",    # 替换为实际的生产域名
                     "https://admin.yourdomain.com"
                 ]
+        elif self.ENVIRONMENT == "development":
+            # 开发环境添加通配符支持
+            if "*" not in self.BACKEND_CORS_ORIGINS:
+                self.BACKEND_CORS_ORIGINS.append("*")
+            # 清理空字符串
+            self.BACKEND_CORS_ORIGINS = [origin for origin in self.BACKEND_CORS_ORIGINS if origin]
 
 @lru_cache()
 def get_settings():
